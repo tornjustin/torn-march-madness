@@ -2,11 +2,29 @@
 // In local dev it is empty string, and the Vite proxy handles /api → localhost:3001.
 const BASE = (import.meta.env.VITE_API_URL || '') + '/api';
 
+// Generate a UUID v4.
+// crypto.randomUUID() requires a secure context (HTTPS / localhost).
+// The S3 static site uses HTTP, so we fall back to crypto.getRandomValues()
+// which works in all contexts.
+function generateUUID() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // RFC 4122 v4 via getRandomValues (works on HTTP)
+  const b = new Uint8Array(16);
+  crypto.getRandomValues(b);
+  b[6] = (b[6] & 0x0f) | 0x40; // version 4
+  b[8] = (b[8] & 0x3f) | 0x80; // variant 10xx
+  return [...b].map((v, i) =>
+    ([4, 6, 8, 10].includes(i) ? '-' : '') + v.toString(16).padStart(2, '0')
+  ).join('');
+}
+
 // Get or create a stable voter UUID stored in localStorage.
 export function getVoterId() {
   let id = localStorage.getItem('memm_voter_id');
   if (!id) {
-    id = crypto.randomUUID();
+    id = generateUUID();
     localStorage.setItem('memm_voter_id', id);
   }
   return id;
