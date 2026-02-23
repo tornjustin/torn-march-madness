@@ -1,0 +1,90 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+jobs:
+  deploy:
+    name: Deploy Backend + Frontend
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-east-1
+      FUNCTION_NAME: torn-march-madness-api
+      FRONTEND_BUCKET: memm-frontend-${{ secrets.AWS_ACCOUNT_ID }}
+      API_URL: https://njrovvcx3k.execute-api.us-east-1.amazonaws.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # ── Backend: Package and update Lambda ───────────────────────────────────
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Package backend
+        run: |
+          cd backend
+          zip -r /tmp/memm-lambda.zip . \
+            --exclude "data/*" \
+            --exclude "uploads/*" \
+            --exclude "*.test.js" \
+            --exclude ".env"
+
+      - name: Deploy backend to Lambda
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ env.FUNCTION_NAME }} \
+            --zip-file fileb:///tmp/memm-lambda.zip \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for Lambda update
+        run: |
+          aws lambda wait function-updated \
+            --function-name ${{ env.FUNCTION_NAME }} \
+            --region ${{ env.AWS_REGION }}
+
+      # ── Frontend: Build and sync to S3 ───────────────────────────────────────
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ env.API_URL }}
+
+      - name: Sync HTML/CSS/JS with no-cache headers
+        run: |
+          aws s3 sync frontend/dist/ "s3://${{ env.FRONTEND_BUCKET }}/" \
+            --delete \
+            --cache-control "no-cache, no-store, must-revalidate" \
+            --exclude "assets/*"
+
+      - name: Sync hashed assets with long-lived cache
+        run: |
+          aws s3 sync frontend/dist/assets/ "s3://${{ env.FRONTEND_BUCKET }}/assets/" \
+            --cache-control "public, max-age=31536000, immutable"
+
+      - name: Print deployment URLs
+        run: |
+          echo "Frontend: http://${{ env.FRONTEND_BUCKET }}.s3-website-us-east-1.amazonaws.com"
+          echo "API:      ${{ env.API_URL }}/api/tournament"

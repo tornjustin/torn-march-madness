@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build output
+frontend/dist/
+
+# Environment secrets — never commit
+.env
+.env.local
+.env.production
+
+# Serverless Framework artifacts
+.serverless/
+
+# Local data — lives in DynamoDB in production
+backend/data/
+backend/uploads/
+
+# Migration script — one-time use, contains local paths
+migrate.js
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+*.swp
+.claude/

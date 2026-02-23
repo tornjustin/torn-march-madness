@@ -1,0 +1,155 @@
+service: torn-march-madness
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: us-east-1
+  stage: ${opt:stage, 'prod'}
+  memorySize: 512
+  timeout: 29  # API Gateway HTTP API hard limit is 30s
+
+  environment:
+    NODE_ENV: production
+    TOURNAMENT_TABLE: ${self:custom.tournamentTable}
+    VOTES_TABLE:      ${self:custom.votesTable}
+    IMAGES_BUCKET:    ${self:custom.imagesBucket}
+    JWT_SECRET:       ${ssm:/torn-march-madness/jwt-secret}
+    ADMIN_PASSWORD:   ${ssm:/torn-march-madness/admin-password}
+    CORS_ORIGINS:     http://${self:custom.frontendBucket}.s3-website-us-east-1.amazonaws.com
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:DeleteItem
+            - dynamodb:Query
+            - dynamodb:BatchWriteItem
+          Resource:
+            - !GetAtt TournamentTable.Arn
+            - !GetAtt VotesTable.Arn
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:GetObject
+          Resource: !Sub 'arn:aws:s3:::${self:custom.imagesBucket}/*'
+
+custom:
+  tournamentTable: torn-march-madness-tournament
+  votesTable:      torn-march-madness-votes
+  # Globally unique bucket names via account ID suffix
+  imagesBucket:    memm-uploads-${aws:accountId}
+  frontendBucket:  memm-frontend-${aws:accountId}
+
+functions:
+  api:
+    handler: backend/lambda.handler
+    events:
+      - httpApi:
+          path: /api
+          method: ANY
+      - httpApi:
+          path: /api/{proxy+}
+          method: ANY
+
+resources:
+  Resources:
+
+    # ─── DynamoDB: Tournament state (single-item design) ──────────────────────
+    TournamentTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:custom.tournamentTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
+
+    # ─── DynamoDB: Votes (PK=matchupId, SK=voterId) ───────────────────────────
+    VotesTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:custom.votesTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: matchupId
+            AttributeType: S
+          - AttributeName: voterId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: matchupId
+            KeyType: HASH
+          - AttributeName: voterId
+            KeyType: RANGE
+
+    # ─── S3: Team image uploads (public read) ─────────────────────────────────
+    ImagesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.imagesBucket}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins: ['*']
+              AllowedMethods: [GET]
+              AllowedHeaders: ['*']
+              MaxAge: 3600
+
+    ImagesBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref ImagesBucket
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal: '*'
+              Action: s3:GetObject
+              Resource: !Sub 'arn:aws:s3:::${self:custom.imagesBucket}/*'
+
+    # ─── S3: Frontend static website ──────────────────────────────────────────
+    FrontendBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:custom.frontendBucket}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: false
+          BlockPublicPolicy: false
+          IgnorePublicAcls: false
+          RestrictPublicBuckets: false
+        WebsiteConfiguration:
+          IndexDocument: index.html
+          ErrorDocument: index.html  # React Router: all 404s → index.html for client-side routing
+
+    FrontendBucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: !Ref FrontendBucket
+        PolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal: '*'
+              Action: s3:GetObject
+              Resource: !Sub 'arn:aws:s3:::${self:custom.frontendBucket}/*'
+
+  Outputs:
+    ApiEndpoint:
+      Value: !Sub 'https://${HttpApi}.execute-api.us-east-1.amazonaws.com'
+      Description: API Gateway HTTP API endpoint URL
+
+    FrontendUrl:
+      Value: !Sub 'http://${self:custom.frontendBucket}.s3-website-us-east-1.amazonaws.com'
+      Description: Frontend S3 static website URL
