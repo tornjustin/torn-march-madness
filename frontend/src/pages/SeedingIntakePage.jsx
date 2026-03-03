@@ -146,7 +146,7 @@ function IntakeContent({ staff, onLogout }) {
           <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
             Signed in as <strong style={{ color: 'var(--gold-dim)' }}>{staff.email}</strong>
             {' '}&middot;{' '}
-            <Link to="/seeding/ballot" style={{ color: 'var(--gold-dim)', fontSize: '0.78rem' }}>Go to Ballot</Link>
+            <Link to="/seeding" style={{ color: 'var(--gold-dim)', fontSize: '0.78rem' }}>Back to Ballot</Link>
           </p>
         </div>
         <button className="btn btn-ghost" style={{ fontSize: '0.75rem' }} onClick={onLogout}>Sign Out</button>

@@ -8,6 +8,19 @@ const PHASE_LABELS = {
   complete: 'Complete',
 };
 
+const PHASE_DESCRIPTIONS = {
+  intake: 'Staff can submit new contender suggestions. The /seeding page is active.',
+  ballot: 'Staff can rank contenders via the /seeding/ballot page. The intake window will be closed automatically.',
+  assignment: 'Ballot voting is closed. Compute rankings, assign divisions, and finalize the bracket.',
+  complete: 'Seeding is finalized. The tournament bracket is ready to go live.',
+};
+
+const PHASE_WARNINGS = {
+  ballot: 'This will close the intake window. Staff will no longer be able to submit new contenders.',
+  assignment: 'This will close the ballot window. Staff will no longer be able to vote. Make sure all ballots are in!',
+  complete: 'This marks seeding as done. Make sure divisions and seeds have been assigned before completing.',
+};
+
 const PHASE_ORDER = ['intake', 'ballot', 'assignment', 'complete'];
 
 function StatusBadge({ status }) {
@@ -93,7 +106,9 @@ export default function SeedingConfigTab({ token }) {
   }
 
   async function handlePhase(phase) {
-    if (!confirm(`Advance to "${PHASE_LABELS[phase]}" phase?`)) return;
+    const warning = PHASE_WARNINGS[phase];
+    const msg = `Advance to "${PHASE_LABELS[phase]}" phase?` + (warning ? `\n\n⚠️ ${warning}` : '');
+    if (!confirm(msg)) return;
     setPhaseLoading(true);
     try {
       await setSeedingPhase(phase, token);
@@ -150,8 +165,21 @@ export default function SeedingConfigTab({ token }) {
           ))}
         </div>
         <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 10 }}>
-          Current phase determines which pages are accessible to staff.
+          {PHASE_DESCRIPTIONS[config.phase]}
         </p>
+        {PHASE_WARNINGS[PHASE_ORDER[currentIdx + 1]] && (
+          <p style={{
+            fontSize: '0.75rem',
+            color: 'var(--gold)',
+            marginTop: 8,
+            padding: '8px 12px',
+            background: 'rgba(var(--gold-rgb, 198,163,80), 0.08)',
+            border: '1px solid rgba(var(--gold-rgb, 198,163,80), 0.2)',
+            borderRadius: 'var(--radius)',
+          }}>
+            Next phase: <strong>{PHASE_LABELS[PHASE_ORDER[currentIdx + 1]]}</strong> — {PHASE_WARNINGS[PHASE_ORDER[currentIdx + 1]]}
+          </p>
+        )}
       </div>
 
       {/* Window config */}
@@ -162,6 +190,10 @@ export default function SeedingConfigTab({ token }) {
             <h3 className="card-section-title">
               Intake Window <StatusBadge status={intakeStatus} />
             </h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 14px' }}>
+              When open, staff can submit new contender suggestions via the <strong>/seeding</strong> page.
+              Set dates to auto-open/close, or override manually with the status dropdown.
+            </p>
             <div className="form-group">
               <label className="form-label">Opens At</label>
               <input type="datetime-local" className="form-input" value={intakeOpens} onChange={e => setIntakeOpens(e.target.value)} />
@@ -185,6 +217,11 @@ export default function SeedingConfigTab({ token }) {
             <h3 className="card-section-title">
               Ballot Window <StatusBadge status={ballotStatus} />
             </h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 14px' }}>
+              When open, staff can rank contenders on the <strong>/seeding/ballot</strong> page by
+              assigning them to tiers (4-pt favorites down to 1-pt honorable mentions).
+              Ballots can be saved as drafts or submitted as final.
+            </p>
             <div className="form-group">
               <label className="form-label">Opens At</label>
               <input type="datetime-local" className="form-input" value={ballotOpens} onChange={e => setBallotOpens(e.target.value)} />

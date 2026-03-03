@@ -1007,6 +1007,34 @@ app.put('/api/admin/seeding/contenders/:id', adminAuth, async (req, res) => {
   }
 });
 
+// Reset all seeding data (contenders, ballots, rankings)
+app.delete('/api/admin/seeding/reset', adminAuth, async (req, res) => {
+  try {
+    const seeding = await getSeedingData();
+    seeding.contenders = [];
+    seeding.ballots = [];
+    seeding.rankings = [];
+    await saveSeedingData(seeding);
+    res.json({ success: true, message: 'All contenders, ballots, and rankings cleared' });
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Clear a staff member's ballot
+app.delete('/api/admin/seeding/ballots/:email', adminAuth, async (req, res) => {
+  try {
+    const seeding = await getSeedingData();
+    const idx = seeding.ballots.findIndex(b => b.email === req.params.email);
+    if (idx === -1) return res.status(404).json({ error: 'No ballot found for that email' });
+    seeding.ballots.splice(idx, 1);
+    await saveSeedingData(seeding);
+    res.json({ success: true, message: `Ballot for ${req.params.email} cleared` });
+  } catch (e) {
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.delete('/api/admin/seeding/contenders/:id', adminAuth, async (req, res) => {
   try {
     const seeding = await getSeedingData();

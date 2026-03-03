@@ -48,8 +48,8 @@ export default function App() {
         <Route path="/" element={<BracketPage />} />
         <Route path="/vote/:matchupId" element={<VotingPage />} />
         <Route path="/admin/*" element={<AdminPage />} />
-        <Route path="/seeding" element={<SeedingIntakePage />} />
-        <Route path="/seeding/ballot" element={<SeedingBallotPage />} />
+        <Route path="/seeding" element={<SeedingBallotPage />} />
+        <Route path="/seeding/intake" element={<SeedingIntakePage />} />
         <Route path="/stream" element={<StreamPage />} />
         <Route path="/embed" element={<EmbedPage />} />
       </Routes>
