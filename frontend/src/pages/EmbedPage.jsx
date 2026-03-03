@@ -108,9 +108,9 @@ function EmbedRegion({ region, matchups, mirrored }) {
           left: colX(r, mirrored),
           width: CW,
           textAlign: 'center',
-          fontFamily: '"EB Garamond", serif',
+          fontFamily: '"Inter", system-ui, sans-serif',
           fontSize: '0.6rem',
-          color: 'rgba(201,162,39,0.5)',
+          color: 'rgba(212,175,55,0.5)',
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           pointerEvents: 'none',
@@ -300,9 +300,9 @@ export default function EmbedPage() {
           ].map(({ region, y, left, right, align }) => region && (
             <div key={region.id} style={{
               position: 'absolute', top: y, left, right,
-              fontFamily: '"Cinzel Decorative", "Cinzel", serif',
+              fontFamily: '"Cinzel Decorative", serif',
               fontSize: '0.65rem',
-              color: '#c9a227',
+              color: '#d4af37',
               letterSpacing: '0.12em',
               textTransform: 'uppercase',
               whiteSpace: 'nowrap',
@@ -316,8 +316,8 @@ export default function EmbedPage() {
           {/* Center column "Finals" label */}
           <div style={{
             position: 'absolute', top: 8, left: RW + CG, width: CTR,
-            fontFamily: '"Cinzel", serif', fontSize: '0.58rem',
-            color: 'rgba(201,162,39,0.6)', letterSpacing: '0.1em',
+            fontFamily: '"Inter", system-ui, sans-serif', fontSize: '0.58rem',
+            color: 'rgba(212,175,55,0.6)', letterSpacing: '0.1em',
             textTransform: 'uppercase', textAlign: 'center', zIndex: 5,
           }}>
             Finals
@@ -361,12 +361,12 @@ export default function EmbedPage() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400&family=Cinzel:wght@400;600&family=EB+Garamond:wght@400;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
 
         .embed-root {
-          font-family: 'EB Garamond', Georgia, serif;
+          font-family: 'Inter', system-ui, sans-serif;
           background: #0a0807;
-          color: #d4b896;
+          color: #e8dcc8;
           min-height: 100vh;
           display: flex;
           flex-direction: column;
@@ -383,16 +383,17 @@ export default function EmbedPage() {
           flex-shrink: 0;
         }
         .embed-h-name {
-          font-family: 'Cinzel', serif;
+          font-family: 'Inter', system-ui, sans-serif;
+          font-weight: 600;
           font-size: 0.95rem;
-          color: #c9a227;
+          color: #d4af37;
           letter-spacing: 0.08em;
           text-transform: uppercase;
         }
         .embed-h-year {
-          font-family: 'EB Garamond', serif;
+          font-family: 'Inter', system-ui, sans-serif;
           font-size: 0.85rem;
-          color: rgba(201,162,39,0.55);
+          color: rgba(212,175,55,0.6);
         }
         .embed-h-live {
           margin-left: auto;
@@ -421,14 +422,14 @@ export default function EmbedPage() {
           background: #100d0a;
           border-top: 1px solid #2e2535;
           font-size: 0.7rem;
-          color: rgba(212,184,150,0.5);
+          color: rgba(232,220,200,0.6);
           display: flex;
           align-items: center;
           gap: 4px;
           flex-shrink: 0;
         }
         .embed-vote-link {
-          color: #c9a227;
+          color: #d4af37;
           text-decoration: none;
           letter-spacing: 0.04em;
         }
@@ -441,15 +442,16 @@ export default function EmbedPage() {
           justify-content: center;
           gap: 12px;
           height: 200px;
-          color: rgba(212,184,150,0.5);
-          font-family: 'Cinzel', serif;
+          color: rgba(232,220,200,0.6);
+          font-family: 'Inter', system-ui, sans-serif;
+          font-weight: 500;
           font-size: 0.85rem;
           letter-spacing: 0.08em;
         }
         .embed-spinner {
           width: 20px; height: 20px;
           border: 2px solid #2e2535;
-          border-top-color: #c9a227;
+          border-top-color: #d4af37;
           border-radius: 50%;
           animation: espin 0.8s linear infinite;
         }
@@ -467,8 +469,8 @@ export default function EmbedPage() {
           flex-direction: column;
           transition: border-color 0.15s;
         }
-        a.ec.ec-active { cursor: pointer; border-color: #5a4820; box-shadow: 0 0 6px rgba(201,162,39,0.12); }
-        a.ec.ec-active:hover { border-color: #c9a227; box-shadow: 0 0 10px rgba(201,162,39,0.25); }
+        a.ec.ec-active { cursor: pointer; border-color: #5a4820; box-shadow: 0 0 6px rgba(212,175,55,0.12); }
+        a.ec.ec-active:hover { border-color: #d4af37; box-shadow: 0 0 10px rgba(212,175,55,0.25); }
         .ec.ec-closed { opacity: 0.88; }
         .ec.ec-empty { background: transparent; border-color: #1e1630; border-style: dashed; opacity: 0.3; }
 
@@ -481,14 +483,14 @@ export default function EmbedPage() {
           transition: background 0.12s;
           min-width: 0;
         }
-        .ec-row.ec-win { background: rgba(201,162,39,0.08); }
+        .ec-row.ec-win { background: rgba(212,175,55,0.08); }
         .ec-row.ec-lose { opacity: 0.45; }
         .ec-row.ec-tbd { opacity: 0.35; }
 
         .ec-seed {
-          font-family: 'EB Garamond', serif;
+          font-family: 'Inter', system-ui, sans-serif;
           font-size: 0.52rem;
-          color: rgba(212,184,150,0.4);
+          color: rgba(232,220,200,0.5);
           min-width: 12px;
           text-align: right;
           flex-shrink: 0;
@@ -504,30 +506,30 @@ export default function EmbedPage() {
           align-items: center;
           justify-content: center;
           font-size: 0.7rem;
-          color: rgba(212,184,150,0.3);
+          color: rgba(232,220,200,0.4);
         }
         .ec-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .ec-name {
-          font-family: 'EB Garamond', serif;
+          font-family: 'Inter', system-ui, sans-serif;
           font-size: 0.62rem;
-          color: #d4b896;
+          color: #e8dcc8;
           flex: 1;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
           line-height: 1.2;
         }
-        .ec-row.ec-win .ec-name { color: #c9a227; }
+        .ec-row.ec-win .ec-name { color: #d4af37; }
         .ec-pct {
-          font-family: 'EB Garamond', serif;
+          font-family: 'Inter', system-ui, sans-serif;
           font-size: 0.58rem;
-          color: rgba(212,184,150,0.5);
+          color: rgba(232,220,200,0.6);
           flex-shrink: 0;
         }
-        .ec-pct1 { color: rgba(201,162,39,0.75); }
+        .ec-pct1 { color: rgba(212,175,55,0.75); }
         .ec-crown {
           font-size: 0.62rem;
-          color: #c9a227;
+          color: #d4af37;
           flex-shrink: 0;
         }
         .ec-div {
@@ -536,7 +538,7 @@ export default function EmbedPage() {
           margin: 0 3px;
         }
         .ec-bar { height: 2px; background: #1e1a16; }
-        .ec-fill { height: 100%; background: linear-gradient(to right, #5a4010, #c9a227); transition: width 0.4s; }
+        .ec-fill { height: 100%; background: linear-gradient(to right, #5a4010, #d4af37); transition: width 0.4s; }
 
         /* ── Center column labels ── */
         .ec-clabel {
@@ -544,16 +546,16 @@ export default function EmbedPage() {
           left: 0;
           width: 100%;
           text-align: center;
-          font-family: 'EB Garamond', serif;
+          font-family: 'Inter', system-ui, sans-serif;
           font-size: 0.55rem;
-          color: rgba(201,162,39,0.45);
+          color: rgba(212,175,55,0.45);
           letter-spacing: 0.12em;
           text-transform: uppercase;
           white-space: nowrap;
           pointer-events: none;
           z-index: 2;
         }
-        .ec-clabel-champ { color: rgba(201,162,39,0.7); font-size: 0.6rem; }
+        .ec-clabel-champ { color: rgba(212,175,55,0.7); font-size: 0.6rem; }
       `}</style>
     </div>
   );

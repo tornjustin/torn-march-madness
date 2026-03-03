@@ -312,7 +312,7 @@ function StreamStyles() {
         font-size: 3rem;
         color: var(--gold);
         text-align: center;
-        text-shadow: 0 0 60px rgba(201,162,39,0.4);
+        text-shadow: 0 0 60px rgba(212,175,55,0.4);
         letter-spacing: 0.05em;
       }
       .standby-sub {
@@ -343,14 +343,14 @@ function StreamStyles() {
         padding: 0 48px;
         gap: 24px;
         flex-shrink: 0;
-        box-shadow: 0 2px 20px rgba(201,162,39,0.15);
+        box-shadow: 0 2px 20px rgba(212,175,55,0.15);
       }
       .stream-tournament-name {
         font-family: var(--font-title);
         font-size: 1.4rem;
         color: var(--gold);
         letter-spacing: 0.05em;
-        text-shadow: 0 0 20px rgba(201,162,39,0.4);
+        text-shadow: 0 0 20px rgba(212,175,55,0.4);
         flex: 1;
       }
       .stream-round-label {
@@ -452,7 +452,7 @@ function StreamStyles() {
         text-shadow: 0 2px 16px rgba(0,0,0,0.9);
         margin-bottom: 6px;
       }
-      .stream-team.leading .stream-team-name { color: var(--gold); text-shadow: 0 0 40px rgba(201,162,39,0.5); }
+      .stream-team.leading .stream-team-name { color: var(--gold); text-shadow: 0 0 40px rgba(212,175,55,0.5); }
       .stream-team-desc {
         font-size: 1.1rem;
         color: rgba(255,255,255,0.55);
@@ -464,7 +464,7 @@ function StreamStyles() {
         font-size: 3.5rem;
         color: var(--gold);
         line-height: 1;
-        text-shadow: 0 0 30px rgba(201,162,39,0.5);
+        text-shadow: 0 0 30px rgba(212,175,55,0.5);
       }
       .stream-vote-label {
         font-family: var(--font-heading);
@@ -503,7 +503,7 @@ function StreamStyles() {
         display: flex;
         align-items: center;
         justify-content: center;
-        box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 20px rgba(201,162,39,0.15);
+        box-shadow: 0 0 40px rgba(0,0,0,0.8), 0 0 20px rgba(212,175,55,0.15);
       }
       .stream-vs-text {
         font-family: var(--font-heading);

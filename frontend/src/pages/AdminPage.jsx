@@ -1015,9 +1015,9 @@ export default function AdminPage() {
           border: 1px solid transparent;
         }
         .dashboard-matchup-item:hover { background: var(--bg-hover); }
-        .dashboard-matchup-item.in-order { background: rgba(201,162,39,0.08); border-color: var(--border-gold); }
+        .dashboard-matchup-item.in-order { background: rgba(212,175,55,0.08); border-color: var(--border-gold); }
         .order-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border); margin-bottom: 4px; background: var(--bg-mid); }
-        .order-item.current { border-color: var(--gold-dim); background: rgba(201,162,39,0.08); }
+        .order-item.current { border-color: var(--gold-dim); background: rgba(212,175,55,0.08); }
         .order-num { font-family: var(--font-heading); font-size: 0.72rem; color: var(--text-muted); min-width: 20px; }
         .order-label { flex: 1; font-size: 0.75rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 

@@ -5,12 +5,12 @@
   --bg-mid:     #1a1720;
   --bg-card:    #201c28;
   --bg-hover:   #2a2535;
-  --gold:       #c9a227;
-  --gold-light: #e8c84a;
-  --gold-dim:   #7a5f14;
-  --text:       #e2d5b8;
-  --text-dim:   #9e8e72;
-  --text-muted: #5a5045;
+  --gold:       #d4af37;
+  --gold-light: #f0d060;
+  --gold-dim:   #9a7b1a;
+  --text:       #f0ebe0;
+  --text-dim:   #c4b498;
+  --text-muted: #8a7d6e;
   --red:        #8b2020;
   --red-bright: #c43030;
   --green:      #1e6b3a;
@@ -18,10 +18,10 @@
   --border:     #2e2535;
   --border-gold: #4a3a18;
   --shadow:     0 4px 24px rgba(0,0,0,0.6);
-  --shadow-gold: 0 0 24px rgba(201,162,39,0.2);
-  --font-title: 'Cinzel Decorative', 'Cinzel', serif;
-  --font-heading: 'Cinzel', serif;
-  --font-body: 'EB Garamond', Georgia, serif;
+  --shadow-gold: 0 0 24px rgba(212,175,55,0.2);
+  --font-title: 'Cinzel Decorative', serif;
+  --font-heading: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
   --radius: 6px;
   --radius-lg: 12px;
 }
@@ -143,7 +143,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold-dim); }
   color: var(--gold);
   text-align: center;
   margin-bottom: 8px;
-  text-shadow: 0 0 40px rgba(201,162,39,0.3);
+  text-shadow: 0 0 40px rgba(212,175,55,0.3);
 }
 .page-subtitle {
   font-family: var(--font-heading);
@@ -178,7 +178,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold-dim); }
   border: 1px solid var(--border-gold);
   color: var(--gold-dim);
 }
-.btn-outline:hover { border-color: var(--gold); color: var(--gold); background: rgba(201,162,39,0.05); }
+.btn-outline:hover { border-color: var(--gold); color: var(--gold); background: rgba(212,175,55,0.05); }
 .btn-danger { background: var(--red); color: #fff; }
 .btn-danger:hover { background: var(--red-bright); }
 .btn-success { background: var(--green); color: #fff; }
@@ -196,7 +196,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold-dim); }
 }
 .card-gold {
   border-color: var(--border-gold);
-  box-shadow: inset 0 0 0 1px rgba(201,162,39,0.08);
+  box-shadow: inset 0 0 0 1px rgba(212,175,55,0.08);
 }
 
 /* ─── Status badges ─────────────────────────────────────────────── */

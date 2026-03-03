@@ -355,7 +355,7 @@ export default function VotingPage() {
 
         .voted-badge {
           display: inline-block;
-          background: rgba(201,162,39,0.2);
+          background: rgba(212,175,55,0.2);
           border: 1px solid var(--gold);
           color: var(--gold);
           font-family: var(--font-heading);
@@ -375,7 +375,7 @@ export default function VotingPage() {
           font-size: clamp(2rem, 5vw, 4rem);
           color: var(--gold);
           line-height: 1;
-          text-shadow: 0 0 30px rgba(201,162,39,0.5);
+          text-shadow: 0 0 30px rgba(212,175,55,0.5);
         }
         .leading-badge {
           display: inline-block;
@@ -447,7 +447,7 @@ export default function VotingPage() {
         .vs-line {
           flex: 1;
           width: 1px;
-          background: linear-gradient(to bottom, transparent, rgba(201,162,39,0.4), transparent);
+          background: linear-gradient(to bottom, transparent, rgba(212,175,55,0.4), transparent);
         }
         .vs-circle {
           width: 52px;
@@ -533,7 +533,7 @@ export default function VotingPage() {
           .vote-arena { flex-direction: column; min-height: auto; }
           .vote-side { min-height: 45vh; }
           .vs-divider { flex-direction: row; position: relative; left: 0; transform: none; top: auto; bottom: auto; width: 100%; height: 48px; }
-          .vs-line.top, .vs-line.bottom { flex: 1; height: 1px; width: auto; background: linear-gradient(to right, transparent, rgba(201,162,39,0.4), transparent); }
+          .vs-line.top, .vs-line.bottom { flex: 1; height: 1px; width: auto; background: linear-gradient(to right, transparent, rgba(212,175,55,0.4), transparent); }
           .vote-side.team2 .vote-content { text-align: left; }
           .vote-side.team2 .seed-badge { right: auto; left: 16px; }
 

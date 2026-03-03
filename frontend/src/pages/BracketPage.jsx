@@ -470,7 +470,7 @@ export default function BracketPage() {
         }
         .mc-card.mc-active {
           border-color: var(--gold-dim);
-          box-shadow: 0 0 12px rgba(201,162,39,0.18);
+          box-shadow: 0 0 12px rgba(212,175,55,0.18);
         }
         .mc-card.mc-closed { opacity: 0.9; }
 
@@ -566,7 +566,7 @@ export default function BracketPage() {
           font-size: 1rem;
           color: var(--gold);
           font-weight: 700;
-          text-shadow: 0 0 12px rgba(201,162,39,0.6);
+          text-shadow: 0 0 12px rgba(212,175,55,0.6);
           line-height: 1;
         }
 
@@ -591,7 +591,7 @@ export default function BracketPage() {
           font-size: 1rem;
           color: var(--gold);
           letter-spacing: 0.06em;
-          box-shadow: 0 0 24px rgba(0,0,0,0.9), 0 0 16px rgba(201,162,39,0.2);
+          box-shadow: 0 0 24px rgba(0,0,0,0.9), 0 0 16px rgba(212,175,55,0.2);
         }
         .mc-vs-live {
           font-size: 0.75rem;
@@ -631,7 +631,7 @@ export default function BracketPage() {
         }
         .bracket-cell.active {
           border-color: var(--gold-dim);
-          box-shadow: 0 0 8px rgba(201,162,39,0.15);
+          box-shadow: 0 0 8px rgba(212,175,55,0.15);
         }
         .bracket-cell.closed { opacity: 0.85; }
         .bracket-cell.empty {
@@ -664,7 +664,7 @@ export default function BracketPage() {
           line-height: 1;
         }
         .bracket-team.winner .bracket-team-seed { color: var(--gold-dim); }
-        .bracket-team.winner { background: rgba(201,162,39,0.1); }
+        .bracket-team.winner { background: rgba(212,175,55,0.1); }
         .bracket-team.loser { opacity: 0.5; }
         .bracket-team.tbd { opacity: 0.4; }
 
@@ -716,7 +716,7 @@ export default function BracketPage() {
 
         a.bracket-cell.active:hover {
           border-color: var(--gold);
-          box-shadow: 0 0 14px rgba(201,162,39,0.25);
+          box-shadow: 0 0 14px rgba(212,175,55,0.25);
         }
 
         .bracket-vote-bar {
@@ -736,7 +736,7 @@ export default function BracketPage() {
           flex-wrap: wrap;
           align-items: center;
           gap: 10px;
-          background: rgba(201,162,39,0.06);
+          background: rgba(212,175,55,0.06);
           border: 1px solid var(--border-gold);
           border-radius: var(--radius);
           padding: 10px 16px;

@@ -15,18 +15,37 @@ function Nav() {
   return (
     <nav className="site-nav">
       <div className="nav-inner">
-        <Link to="/" className="nav-logo">
-          <span className="nav-logo-main">Middle-earth</span>
-          <span className="nav-logo-sub">March Madness</span>
-        </Link>
+        <div className="nav-brand">
+          <a href="https://www.theonering.net" target="_blank" rel="noopener noreferrer" className="nav-torn-logo">
+            <img src="/torn-logo.png" alt="TheOneRing.net" />
+          </a>
+          <Link to="/" className="nav-logo">
+            <span className="nav-logo-main">Middle-earth</span>
+            <span className="nav-logo-sub">March Madness</span>
+          </Link>
+        </div>
         <div className="nav-links">
           <Link to="/" className={loc.pathname === '/' ? 'active' : ''}>Bracket</Link>
-          <Link to="/stream" className="nav-stream-link" target="_blank">📺 Stream View</Link>
+          <Link to="/stream" className="nav-stream-link" target="_blank">Stream View</Link>
           <Link to="/seeding" className={loc.pathname.startsWith('/seeding') ? 'active' : ''}>Staff</Link>
           <Link to="/admin" className={loc.pathname.startsWith('/admin') ? 'active' : ''}>Admin</Link>
         </div>
       </div>
       <style>{`
+        .nav-brand {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .nav-torn-logo {
+          display: flex;
+          align-items: center;
+          flex-shrink: 0;
+        }
+        .nav-torn-logo img {
+          height: 44px;
+          width: auto;
+        }
         @media (max-width: 640px) {
           .nav-inner { height: 56px; }
           .nav-logo-main { font-size: 0.9rem; }
@@ -34,6 +53,8 @@ function Nav() {
           .nav-links { gap: 16px; }
           .nav-links a { font-size: 0.75rem; letter-spacing: 0.06em; }
           .nav-stream-link { display: none; }
+          .nav-torn-logo img { height: 36px; }
+          .nav-brand { gap: 8px; }
         }
       `}</style>
     </nav>
