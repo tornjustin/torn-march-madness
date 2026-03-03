@@ -96,3 +96,59 @@ export const resetVotes        = (id, token) => adminReq(`/admin/matchups/${id}/
 export const updateDashboard = (body, token) => adminReq('/admin/dashboard', { method: 'PUT', body }, token);
 export const dashboardNext   = token => adminReq('/admin/dashboard/next', { method: 'POST' }, token);
 export const dashboardPrev   = token => adminReq('/admin/dashboard/prev', { method: 'POST' }, token);
+
+// ─── Staff Auth ───────────────────────────────────────────────────────────────
+
+function staffReq(url, opts = {}) {
+  const token = sessionStorage.getItem('memm_staff_token');
+  return req(url, { ...opts, headers: { ...opts.headers, 'x-staff-token': token } });
+}
+
+export const staffLogin  = email => req('/staff/login', { method: 'POST', body: { email } });
+export const getStaffMe  = () => staffReq('/staff/me');
+
+// ─── Staff: Contender intake ─────────────────────────────────────────────────
+
+export const getStaffContenders = () => staffReq('/staff/contenders');
+export const checkDuplicate     = name => staffReq('/staff/contenders/check-duplicate', { method: 'POST', body: { name } });
+export const submitContender    = body => staffReq('/staff/contenders', { method: 'POST', body });
+
+// ─── Staff: Seeding ballot ───────────────────────────────────────────────────
+
+export const getStaffBallot  = () => staffReq('/staff/ballot');
+export const saveStaffBallot = (picks, status) => staffReq('/staff/ballot', { method: 'PUT', body: { picks, status } });
+export const getBallotStats  = () => staffReq('/staff/ballot/stats');
+
+// ─── Public: Seeding status ──────────────────────────────────────────────────
+
+export const getSeedingStatus = () => req('/seeding/status');
+
+// ─── Admin: Seeding ──────────────────────────────────────────────────────────
+
+export const getSeedingData       = token => adminReq('/admin/seeding', {}, token);
+export const updateSeedingConfig  = (body, token) => adminReq('/admin/seeding/config', { method: 'PUT', body }, token);
+export const setSeedingPhase      = (phase, token) => adminReq('/admin/seeding/phase', { method: 'PUT', body: { phase } }, token);
+export const importContenders     = (contenders, token) => adminReq('/admin/seeding/import', { method: 'POST', body: { contenders } }, token);
+
+export const createContender      = (body, token) => adminReq('/admin/seeding/contenders', { method: 'POST', body }, token);
+export const updateContender      = (id, body, token) => adminReq(`/admin/seeding/contenders/${id}`, { method: 'PUT', body }, token);
+export const deleteContender      = (id, token) => adminReq(`/admin/seeding/contenders/${id}`, { method: 'DELETE' }, token);
+export const toggleContenderSelected = (id, selected, token) => adminReq(`/admin/seeding/contenders/${id}/selected`, { method: 'PUT', body: { selected } }, token);
+export const selectTopContenders  = (count, token) => adminReq('/admin/seeding/select-top', { method: 'POST', body: { count } }, token);
+
+export const uploadContenderImage = async (contenderId, file, token) => {
+  const fd = new FormData();
+  fd.append('image', file);
+  const r = await fetch(`${BASE}/admin/seeding/contenders/${contenderId}/image`, {
+    method: 'POST',
+    headers: { 'x-admin-token': token },
+    body: fd,
+  });
+  if (!r.ok) throw await r.json().catch(() => ({ error: r.statusText }));
+  return r.json();
+};
+
+export const scrapeImages       = (contenderIds, token) => adminReq('/admin/seeding/scrape-images', { method: 'POST', body: { contenderIds } }, token);
+export const computeRankings    = token => adminReq('/admin/seeding/compute-rankings', { method: 'POST' }, token);
+export const assignDivisions    = (body, token) => adminReq('/admin/seeding/assign-divisions', { method: 'POST', body }, token);
+export const finalizeSeeding    = (body, token) => adminReq('/admin/seeding/finalize', { method: 'POST', body }, token);

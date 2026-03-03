@@ -4,6 +4,9 @@ import {
   initializeBracket, seedMatchup, setMatchupStatus, setWinner, resetVotes,
   updateRegion, updateSettings, updateDashboard, adminLogin
 } from '../api';
+import SeedingConfigTab from '../components/admin/SeedingConfigTab';
+import SeedingContendersTab from '../components/admin/SeedingContendersTab';
+import SeedingBallotsTab from '../components/admin/SeedingBallotsTab';
 
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 function AdminLogin({ onLogin }) {
@@ -780,7 +783,7 @@ export default function AdminPage() {
   const [token, setToken] = useState(() => sessionStorage.getItem('memm_admin_token'));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState('teams');
+  const [tab, setTab] = useState('seeding-config');
 
   useEffect(() => {
     if (token) loadData();
@@ -797,6 +800,9 @@ export default function AdminPage() {
   if (loading || !data) return <div className="loading-wrap"><div className="loading-ring" /><span>Loading admin panel…</span></div>;
 
   const tabs = [
+    { id: 'seeding-config', label: 'Seeding Config' },
+    { id: 'seeding-contenders', label: 'Contenders' },
+    { id: 'seeding-ballots', label: 'Ballots' },
     { id: 'teams', label: 'Teams' },
     { id: 'bracket', label: 'Bracket Setup' },
     { id: 'matchups', label: 'Matchups' },
@@ -820,6 +826,9 @@ export default function AdminPage() {
         {tabs.map(t => <button key={t.id} className={`tab-btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>{t.label}</button>)}
       </div>
 
+      {tab === 'seeding-config' && <SeedingConfigTab token={token} />}
+      {tab === 'seeding-contenders' && <SeedingContendersTab token={token} />}
+      {tab === 'seeding-ballots' && <SeedingBallotsTab token={token} />}
       {tab === 'teams' && <TeamsManager data={data} token={token} onRefresh={loadData} />}
       {tab === 'bracket' && <BracketSetup data={data} token={token} onRefresh={loadData} />}
       {tab === 'matchups' && <MatchupManager data={data} token={token} onRefresh={loadData} />}

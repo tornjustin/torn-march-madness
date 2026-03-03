@@ -14,6 +14,7 @@ provider:
     NODE_ENV: production
     TOURNAMENT_TABLE: ${self:custom.tournamentTable}
     VOTES_TABLE:      ${self:custom.votesTable}
+    DATA_BUCKET:      ${self:custom.dataBucket}
     IMAGES_BUCKET:    ${self:custom.imagesBucket}
     JWT_SECRET:       ${ssm:/torn-march-madness/jwt-secret}
     ADMIN_PASSWORD:   ${ssm:/torn-march-madness/admin-password}
@@ -37,12 +38,22 @@ provider:
             - s3:PutObject
             - s3:DeleteObject
             - s3:GetObject
+            - s3:ListBucket
+          Resource:
+            - !Sub 'arn:aws:s3:::${self:custom.dataBucket}'
+            - !Sub 'arn:aws:s3:::${self:custom.dataBucket}/*'
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:DeleteObject
+            - s3:GetObject
           Resource: !Sub 'arn:aws:s3:::${self:custom.imagesBucket}/*'
 
 custom:
   tournamentTable: torn-march-madness-tournament
   votesTable:      torn-march-madness-votes
   # Globally unique bucket names via account ID suffix
+  dataBucket:      memm-data-${aws:accountId}
   imagesBucket:    memm-uploads-${aws:accountId}
   frontendBucket:  memm-frontend-${aws:accountId}
 
@@ -91,6 +102,13 @@ resources:
             KeyType: HASH
           - AttributeName: voterId
             KeyType: RANGE
+
+    # ─── S3: Application data (tournament.json, seeding.json, votes) ──────────
+    DataBucket:
+      Type: AWS::S3::Bucket
+      DeletionPolicy: Retain
+      Properties:
+        BucketName: ${self:custom.dataBucket}
 
     # ─── S3: Team image uploads (public read) ─────────────────────────────────
     ImagesBucket:

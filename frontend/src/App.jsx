@@ -5,6 +5,8 @@ import VotingPage from './pages/VotingPage';
 import AdminPage from './pages/AdminPage';
 import StreamPage from './pages/StreamPage';
 import EmbedPage from './pages/EmbedPage';
+import SeedingIntakePage from './pages/SeedingIntakePage';
+import SeedingBallotPage from './pages/SeedingBallotPage';
 
 function Nav() {
   const loc = useLocation();
@@ -20,6 +22,7 @@ function Nav() {
         <div className="nav-links">
           <Link to="/" className={loc.pathname === '/' ? 'active' : ''}>Bracket</Link>
           <Link to="/stream" className="nav-stream-link" target="_blank">📺 Stream View</Link>
+          <Link to="/seeding" className={loc.pathname.startsWith('/seeding') ? 'active' : ''}>Staff</Link>
           <Link to="/admin" className={loc.pathname.startsWith('/admin') ? 'active' : ''}>Admin</Link>
         </div>
       </div>
@@ -45,6 +48,8 @@ export default function App() {
         <Route path="/" element={<BracketPage />} />
         <Route path="/vote/:matchupId" element={<VotingPage />} />
         <Route path="/admin/*" element={<AdminPage />} />
+        <Route path="/seeding" element={<SeedingIntakePage />} />
+        <Route path="/seeding/ballot" element={<SeedingBallotPage />} />
         <Route path="/stream" element={<StreamPage />} />
         <Route path="/embed" element={<EmbedPage />} />
       </Routes>

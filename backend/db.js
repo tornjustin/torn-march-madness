@@ -112,4 +112,44 @@ async function deleteVotesForMatchup(matchupId) {
   }
 }
 
-module.exports = { getData, saveData, getVote, saveVote, deleteVotesForMatchup };
+// ─── Seeding (single S3 object: seeding.json) ─────────────────────────────
+
+const DEFAULT_SEEDING = {
+  config: {
+    intake: { opensAt: null, closesAt: null, status: 'pending' },
+    ballot: { opensAt: null, closesAt: null, status: 'pending' },
+    phase: 'intake',
+    ballotRules: { tiers: [4, 3, 2, 1], picksPerTier: 16 },
+  },
+  contenders: [],
+  staff: [],
+  ballots: [],
+  rankings: [],
+};
+
+async function getSeedingData() {
+  try {
+    const result = await s3.send(new GetObjectCommand({
+      Bucket: DATA_BUCKET,
+      Key: 'seeding.json',
+    }));
+    const body = await streamToString(result.Body);
+    return JSON.parse(body);
+  } catch (e) {
+    if (e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404) {
+      return JSON.parse(JSON.stringify(DEFAULT_SEEDING));
+    }
+    throw e;
+  }
+}
+
+async function saveSeedingData(data) {
+  await s3.send(new PutObjectCommand({
+    Bucket: DATA_BUCKET,
+    Key: 'seeding.json',
+    Body: JSON.stringify(data),
+    ContentType: 'application/json',
+  }));
+}
+
+module.exports = { getData, saveData, getVote, saveVote, deleteVotesForMatchup, getSeedingData, saveSeedingData };
