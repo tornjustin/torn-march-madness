@@ -171,3 +171,7 @@ resources:
     FrontendUrl:
       Value: !Sub 'http://${self:custom.frontendBucket}.s3-website-us-east-1.amazonaws.com'
       Description: Frontend S3 static website URL
+
+    FrontendBucketName:
+      Value: ${self:custom.frontendBucket}
+      Description: Frontend S3 bucket name

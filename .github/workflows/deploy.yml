@@ -53,13 +53,16 @@ jobs:
             --stack-name torn-march-madness-prod \
             --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
             --output text)
-          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+          FRONTEND_URL=$(aws cloudformation describe-stacks \
             --stack-name torn-march-madness-prod \
             --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
             --output text)
+          BUCKET_NAME=$(aws cloudformation describe-stacks \
+            --stack-name torn-march-madness-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
+            --output text)
           echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
-          echo "frontend_url=$FRONTEND_BUCKET" >> "$GITHUB_OUTPUT"
-          BUCKET_NAME="memm-frontend-${{ secrets.AWS_ACCOUNT_ID }}"
+          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
           echo "bucket_name=$BUCKET_NAME" >> "$GITHUB_OUTPUT"
 
       # ── Frontend: Build and sync to S3 ───────────────────────────────────────
