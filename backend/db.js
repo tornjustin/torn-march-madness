@@ -8,14 +8,16 @@ const {
   QueryCommand,
   BatchWriteCommand,
 } = require('@aws-sdk/lib-dynamodb');
+const region = process.env.AWS_REGION || 'us-east-1';
 
-const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const client = new DynamoDBClient({ region });
 const ddb = DynamoDBDocumentClient.from(client, {
   marshallOptions: { removeUndefinedValues: true },
 });
 
 const TOURNAMENT_TABLE = process.env.TOURNAMENT_TABLE;
 const VOTES_TABLE = process.env.VOTES_TABLE;
+const SEEDING_TABLE = process.env.SEEDING_TABLE;
 
 const DEFAULT_TOURNAMENT = {
   settings: {
@@ -103,7 +105,7 @@ async function deleteVotesForMatchup(matchupId) {
   } while (lastKey);
 }
 
-// ─── Seeding (single S3 object: seeding.json) ─────────────────────────────
+// ─── Seeding (single DynamoDB item: PK='STATE') ────────────────────────────
 
 const DEFAULT_SEEDING = {
   config: {
@@ -119,27 +121,19 @@ const DEFAULT_SEEDING = {
 };
 
 async function getSeedingData() {
-  try {
-    const result = await s3.send(new GetObjectCommand({
-      Bucket: DATA_BUCKET,
-      Key: 'seeding.json',
-    }));
-    const body = await streamToString(result.Body);
-    return JSON.parse(body);
-  } catch (e) {
-    if (e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404) {
-      return JSON.parse(JSON.stringify(DEFAULT_SEEDING));
-    }
-    throw e;
-  }
+  const result = await ddb.send(new GetCommand({
+    TableName: SEEDING_TABLE,
+    Key: { PK: 'STATE' },
+  }));
+  if (!result.Item) return { ...DEFAULT_SEEDING };
+  const { PK, ...data } = result.Item;
+  return data;
 }
 
 async function saveSeedingData(data) {
-  await s3.send(new PutObjectCommand({
-    Bucket: DATA_BUCKET,
-    Key: 'seeding.json',
-    Body: JSON.stringify(data),
-    ContentType: 'application/json',
+  await ddb.send(new PutCommand({
+    TableName: SEEDING_TABLE,
+    Item: { PK: 'STATE', ...data },
   }));
 }
 

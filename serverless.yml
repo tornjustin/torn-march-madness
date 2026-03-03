@@ -14,6 +14,7 @@ provider:
     NODE_ENV: production
     TOURNAMENT_TABLE: ${self:custom.tournamentTable}
     VOTES_TABLE:      ${self:custom.votesTable}
+    SEEDING_TABLE:    ${self:custom.seedingTable}
     DATA_BUCKET:      ${self:custom.dataBucket}
     IMAGES_BUCKET:    ${self:custom.imagesBucket}
     JWT_SECRET:       ${env:JWT_SECRET}
@@ -33,6 +34,7 @@ provider:
           Resource:
             - !GetAtt TournamentTable.Arn
             - !GetAtt VotesTable.Arn
+            - !GetAtt SeedingTable.Arn
         - Effect: Allow
           Action:
             - s3:PutObject
@@ -52,6 +54,7 @@ provider:
 custom:
   tournamentTable: torn-march-madness-tournament
   votesTable:      torn-march-madness-votes
+  seedingTable:    torn-march-madness-seeding
   # Globally unique bucket names via account ID suffix
   dataBucket:      memm-data-${aws:accountId}
   imagesBucket:    memm-uploads-${aws:accountId}
@@ -102,6 +105,20 @@ resources:
             KeyType: HASH
           - AttributeName: voterId
             KeyType: RANGE
+
+    # ─── DynamoDB: Seeding state (single-item design) ─────────────────────────
+    SeedingTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:custom.seedingTable}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: PK
+            AttributeType: S
+        KeySchema:
+          - AttributeName: PK
+            KeyType: HASH
 
     # ─── S3: Application data (tournament.json, seeding.json, votes) ──────────
     DataBucket:
