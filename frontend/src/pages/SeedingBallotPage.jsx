@@ -38,25 +38,26 @@ export default function SeedingBallotPage() {
 }
 
 function StarRating({ value, onChange, disabled }) {
+  const tierColor = value > 0 ? TIERS.find(t => t.points === value)?.color : null;
   return (
     <div className="star-rating">
-      {TIERS.slice().reverse().map(t => {
-        const active = value === t.points;
+      {[1, 2, 3, 4].map(n => {
+        const filled = value > 0 && n <= value;
         return (
           <button
-            key={t.points}
-            className={`star-btn ${active ? 'active' : ''} ${value && !active ? 'dimmed' : ''}`}
-            style={{ '--star-color': t.color }}
+            key={n}
+            className={`star-btn ${filled ? 'filled' : ''}`}
+            style={{ '--star-color': tierColor || 'var(--text-muted)' }}
             disabled={disabled}
-            onClick={() => onChange(active ? 0 : t.points)}
-            title={`${t.points} - ${t.label}`}
+            onClick={() => onChange(value === n ? 0 : n)}
+            title={`${n} - ${TIERS.find(t => t.points === n)?.label}`}
           >
-            <span className="star-icon">{active ? '\u2605' : '\u2606'}</span>
+            <span className="star-icon">{filled ? '\u2605' : '\u2606'}</span>
           </button>
         );
       })}
       {value > 0 && (
-        <span className="star-label" style={{ color: TIERS.find(t => t.points === value)?.color }}>
+        <span className="star-label" style={{ color: tierColor }}>
           {TIERS.find(t => t.points === value)?.label}
         </span>
       )}
@@ -204,50 +205,36 @@ function BallotContent({ staff, onLogout }) {
             You only get <strong>16 of each rating</strong>, so choose wisely! Click a star again to remove it.
           </p>
           <div className="ballot-legend">
-            <div className="ballot-legend-item">
-              <span className="ballot-legend-stars" style={{ color: '#c9a227' }}>{'\u2605\u2605\u2605\u2605'}</span>
-              <span className="ballot-legend-label" style={{ color: '#c9a227' }}>Favorites</span>
-              <span className="ballot-legend-desc">Your absolute must-haves (16 picks)</span>
-            </div>
-            <div className="ballot-legend-item">
-              <span className="ballot-legend-stars" style={{ color: '#8faa3b' }}>{'\u2605\u2605\u2605'}<span style={{ opacity: 0.2 }}>{'\u2606'}</span></span>
-              <span className="ballot-legend-label" style={{ color: '#8faa3b' }}>Next Best</span>
-              <span className="ballot-legend-desc">Strong contenders you love (16 picks)</span>
-            </div>
-            <div className="ballot-legend-item">
-              <span className="ballot-legend-stars" style={{ color: '#5b9bd5' }}>{'\u2605\u2605'}<span style={{ opacity: 0.2 }}>{'\u2606\u2606'}</span></span>
-              <span className="ballot-legend-label" style={{ color: '#5b9bd5' }}>Solid Picks</span>
-              <span className="ballot-legend-desc">Good options worth including (16 picks)</span>
-            </div>
-            <div className="ballot-legend-item">
-              <span className="ballot-legend-stars" style={{ color: '#b07ab8' }}>{'\u2605'}<span style={{ opacity: 0.2 }}>{'\u2606\u2606\u2606'}</span></span>
-              <span className="ballot-legend-label" style={{ color: '#b07ab8' }}>Honorable Mentions</span>
-              <span className="ballot-legend-desc">Nice to have, lower priority (16 picks)</span>
-            </div>
+            {TIERS.map(t => {
+              const count = tierCount(t.points);
+              const full = count === PICKS_PER_TIER;
+              const filled = '\u2605'.repeat(t.points);
+              const empty = '\u2606'.repeat(4 - t.points);
+              const descs = {
+                4: 'Your absolute must-haves',
+                3: 'Strong contenders you love',
+                2: 'Good options worth including',
+                1: 'Nice to have, lower priority',
+              };
+              return (
+                <div key={t.points} className={`ballot-legend-item ${full ? 'legend-full' : ''}`} style={{ '--tier-color': t.color }}>
+                  <span className="ballot-legend-stars" style={{ color: t.color }}>{filled}<span style={{ opacity: 0.2 }}>{empty}</span></span>
+                  <div className="ballot-legend-info">
+                    <span className="ballot-legend-label" style={{ color: t.color }}>{t.label}</span>
+                    <span className="ballot-legend-desc">{descs[t.points]}</span>
+                  </div>
+                  <span className="ballot-legend-count" style={{ color: full ? 'var(--green-bright)' : t.color }}>
+                    {count}<span className="ballot-legend-count-max">/{PICKS_PER_TIER}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 10, fontFamily: 'var(--font-heading)', fontSize: '0.8rem', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+            {totalPicks}/64 total rated
           </div>
         </div>
       )}
-
-      {/* Sticky summary bar */}
-      <div className="ballot-summary">
-        {TIERS.map(t => {
-          const count = tierCount(t.points);
-          const full = count === PICKS_PER_TIER;
-          const stars = '\u2605'.repeat(t.points);
-          return (
-            <div key={t.points} className={`ballot-summary-item ${full ? 'full' : ''}`} style={{ '--tier-color': t.color }}>
-              <span className="ballot-summary-stars" style={{ color: t.color }}>{stars}</span>
-              <span className="ballot-summary-label">{t.label}</span>
-              <span className="ballot-summary-count" style={{ color: full ? 'var(--green-bright)' : 'var(--text-muted)' }}>
-                {count}/{PICKS_PER_TIER}
-              </span>
-            </div>
-          );
-        })}
-        <div className="ballot-summary-total">
-          {totalPicks}/64 rated
-        </div>
-      </div>
 
       {msg && <div className={msg.startsWith('Error') || msg.startsWith('Need') ? 'error-msg' : 'success-msg'} style={{ marginBottom: 12 }}>{msg}</div>}
 
@@ -263,9 +250,19 @@ function BallotContent({ staff, onLogout }) {
               style={rating ? { '--card-accent': tier.color } : undefined}
             >
               {c.image ? (
-                <img src={c.image} alt={c.name} className="ballot-card-img" />
+                c.link ? (
+                  <a href={c.link} target="_blank" rel="noopener noreferrer">
+                    <img src={c.image} alt={c.name} className="ballot-card-img" />
+                  </a>
+                ) : (
+                  <img src={c.image} alt={c.name} className="ballot-card-img" />
+                )
               ) : (
-                <div className="ballot-card-img ballot-card-no-img">No Image</div>
+                c.link ? (
+                  <a href={c.link} target="_blank" rel="noopener noreferrer" className="ballot-card-img ballot-card-no-img">No Image</a>
+                ) : (
+                  <div className="ballot-card-img ballot-card-no-img">No Image</div>
+                )
               )}
               <div className="ballot-card-body">
                 <div className="ballot-card-name">{c.name}</div>
@@ -330,81 +327,53 @@ function BallotContent({ staff, onLogout }) {
 
         .ballot-legend {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 8px;
         }
         .ballot-legend-item {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 6px 10px;
-          background: var(--bg-dark);
-          border-radius: 4px;
-        }
-        .ballot-legend-stars {
-          font-size: 1rem;
-          line-height: 1;
-          flex-shrink: 0;
-          min-width: 56px;
-        }
-        .ballot-legend-label {
-          font-family: var(--font-heading);
-          font-size: 0.78rem;
-          letter-spacing: 0.03em;
-          flex-shrink: 0;
-          min-width: 70px;
-        }
-        .ballot-legend-desc {
-          font-size: 0.72rem;
-          color: var(--text-muted);
-        }
-
-        /* Sticky summary bar */
-        .ballot-summary {
-          position: sticky;
-          top: 64px;
-          z-index: 20;
-          display: flex;
-          gap: 6px;
+          gap: 10px;
           padding: 10px 14px;
           background: var(--bg-dark);
           border: 1px solid var(--border);
           border-radius: var(--radius);
-          margin-bottom: 16px;
-          flex-wrap: wrap;
-          align-items: center;
+          transition: border-color 0.15s;
         }
-        .ballot-summary-item {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 4px 10px;
-          border-radius: 4px;
-          background: var(--bg-card);
-          border: 1px solid var(--border);
-          font-size: 0.75rem;
-        }
-        .ballot-summary-item.full {
+        .ballot-legend-item.legend-full {
           border-color: var(--green-bright);
           opacity: 0.7;
         }
-        .ballot-summary-stars { font-size: 0.8rem; line-height: 1; }
-        .ballot-summary-label {
+        .ballot-legend-stars {
+          font-size: 1.1rem;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+        .ballot-legend-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .ballot-legend-label {
+          display: block;
           font-family: var(--font-heading);
-          color: var(--tier-color);
+          font-size: 0.82rem;
           letter-spacing: 0.03em;
-          font-size: 0.7rem;
         }
-        .ballot-summary-count {
-          font-family: var(--font-heading);
-          font-size: 0.7rem;
-        }
-        .ballot-summary-total {
-          margin-left: auto;
-          font-family: var(--font-heading);
-          font-size: 0.75rem;
+        .ballot-legend-desc {
+          display: block;
+          font-size: 0.68rem;
           color: var(--text-muted);
-          letter-spacing: 0.04em;
+          margin-top: 1px;
+        }
+        .ballot-legend-count {
+          font-family: var(--font-heading);
+          font-size: 1.5rem;
+          letter-spacing: 0.02em;
+          flex-shrink: 0;
+        }
+        .ballot-legend-count-max {
+          font-size: 0.8rem;
+          color: var(--text-muted);
         }
 
         /* Card grid */
@@ -477,15 +446,13 @@ function BallotContent({ staff, onLogout }) {
         }
         .star-btn:hover:not(:disabled) { transform: scale(1.2); }
         .star-btn:disabled { cursor: default; }
-        .star-btn.dimmed .star-icon { opacity: 0.3; }
         .star-icon {
           font-size: 1.4rem;
           line-height: 1;
-          color: var(--star-color);
         }
-        .star-btn:not(.active) .star-icon { color: var(--text-muted); opacity: 0.4; }
-        .star-btn:not(.active):hover:not(:disabled) .star-icon { opacity: 0.7; }
-        .star-btn.active .star-icon { opacity: 1; }
+        .star-btn .star-icon { color: var(--text-muted); opacity: 0.3; }
+        .star-btn:hover:not(:disabled) .star-icon { opacity: 0.6; }
+        .star-btn.filled .star-icon { color: var(--star-color); opacity: 1; }
         .star-label {
           font-family: var(--font-heading);
           font-size: 0.65rem;

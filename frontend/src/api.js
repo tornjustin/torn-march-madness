@@ -152,3 +152,5 @@ export const scrapeImages       = (contenderIds, token) => adminReq('/admin/seed
 export const computeRankings    = token => adminReq('/admin/seeding/compute-rankings', { method: 'POST' }, token);
 export const assignDivisions    = (body, token) => adminReq('/admin/seeding/assign-divisions', { method: 'POST', body }, token);
 export const finalizeSeeding    = (body, token) => adminReq('/admin/seeding/finalize', { method: 'POST', body }, token);
+export const resetSeeding       = token => adminReq('/admin/seeding/reset', { method: 'DELETE' }, token);
+export const resetBallot        = (email, token) => adminReq(`/admin/seeding/ballots/${encodeURIComponent(email)}`, { method: 'DELETE' }, token);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   getSeedingData, computeRankings, assignDivisions, finalizeSeeding,
-  selectTopContenders, toggleContenderSelected,
+  selectTopContenders, toggleContenderSelected, resetBallot,
 } from '../../api';
 
 const DIVISION_COLORS = ['#c9a227', '#8faa3b', '#5b9bd5', '#b07ab8'];
@@ -91,6 +91,17 @@ export default function SeedingBallotsTab({ token }) {
       await toggleContenderSelected(id, !currentSelected, token);
       load();
     } catch (e) { flash('Toggle failed', true); }
+  }
+
+  async function handleResetBallot(email) {
+    if (!confirm(`Reset ballot for ${email}? This will delete their picks and they'll need to start over.`)) return;
+    try {
+      await resetBallot(email, token);
+      flash(`Ballot for ${email} has been reset`);
+      load();
+    } catch (e) {
+      flash('Error: ' + (e.error || e.message), true);
+    }
   }
 
   if (loading || !seeding) {
@@ -245,6 +256,15 @@ export default function SeedingBallotsTab({ token }) {
                   }}>
                     {ballot?.status === 'submitted' ? `Submitted (${pickCount})` : ballot ? `Draft (${pickCount})` : 'No ballot'}
                   </span>
+                  {ballot && (
+                    <button
+                      className="btn btn-ghost"
+                      style={{ fontSize: '0.68rem', color: '#c05050', padding: '2px 8px' }}
+                      onClick={() => handleResetBallot(s.email)}
+                    >
+                      Reset
+                    </button>
+                  )}
                 </div>
               );
             })}
