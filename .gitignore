@@ -17,8 +17,9 @@ frontend/dist/
 backend/data/
 backend/uploads/
 
-# Migration script — one-time use, contains local paths
+# Migration script and backups — one-time use
 migrate.js
+s3-backup/
 
 # macOS
 .DS_Store

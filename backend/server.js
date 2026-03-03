@@ -260,7 +260,7 @@ app.post('/api/matchups/:id/vote', voteLimiter, async (req, res) => {
     try {
       await saveVote(req.params.id, voterId, teamId);
     } catch (e) {
-      if (e.name === 'PreconditionFailed' || e.$metadata?.httpStatusCode === 412) {
+      if (e.name === 'ConditionalCheckFailedException') {
         return res.status(409).json({ error: 'Already voted', alreadyVoted: true });
       }
       throw e;

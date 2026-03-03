@@ -66,6 +66,17 @@ jobs:
           echo "bucket_name=$BUCKET_NAME" >> "$GITHUB_OUTPUT"
 
       # ── Frontend: Build and sync to S3 ───────────────────────────────────────
+      - name: Get frontend bucket name
+        id: bucket
+        run: |
+          BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name torn-march-madness-prod \
+            --query 'Stacks[0].Outputs[?OutputKey==`FrontendUrl`].OutputValue' \
+            --output text \
+            --region us-east-1 \
+            | sed 's|http://||' | sed 's|\.s3-website.*||')
+          echo "name=${BUCKET}" >> "$GITHUB_OUTPUT"
+
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend

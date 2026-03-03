@@ -1,16 +1,21 @@
 'use strict';
 
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const {
-  S3Client,
-  GetObjectCommand,
-  PutObjectCommand,
-  DeleteObjectCommand,
-  ListObjectsV2Command,
-} = require('@aws-sdk/client-s3');
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+  BatchWriteCommand,
+} = require('@aws-sdk/lib-dynamodb');
 
-const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
+const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const ddb = DynamoDBDocumentClient.from(client, {
+  marshallOptions: { removeUndefinedValues: true },
+});
 
-const DATA_BUCKET = process.env.DATA_BUCKET;
+const TOURNAMENT_TABLE = process.env.TOURNAMENT_TABLE;
+const VOTES_TABLE = process.env.VOTES_TABLE;
 
 const DEFAULT_TOURNAMENT = {
   settings: {
@@ -29,87 +34,73 @@ const DEFAULT_TOURNAMENT = {
   dashboardState: { currentMatchupId: null, matchupOrder: [] },
 };
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-async function streamToString(stream) {
-  const chunks = [];
-  for await (const chunk of stream) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  return Buffer.concat(chunks).toString('utf8');
-}
-
-// ─── Tournament (single S3 object: tournament.json) ───────────────────────────
+// ─── Tournament (single DynamoDB item: PK='STATE') ───────────────────────────
 
 async function getData() {
-  try {
-    const result = await s3.send(new GetObjectCommand({
-      Bucket: DATA_BUCKET,
-      Key: 'tournament.json',
-    }));
-    const body = await streamToString(result.Body);
-    return JSON.parse(body);
-  } catch (e) {
-    if (e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404) {
-      return { ...DEFAULT_TOURNAMENT };
-    }
-    throw e;
-  }
+  const result = await ddb.send(new GetCommand({
+    TableName: TOURNAMENT_TABLE,
+    Key: { PK: 'STATE' },
+  }));
+  if (!result.Item) return { ...DEFAULT_TOURNAMENT };
+  const { PK, ...data } = result.Item;
+  return data;
 }
 
 async function saveData(data) {
-  await s3.send(new PutObjectCommand({
-    Bucket: DATA_BUCKET,
-    Key: 'tournament.json',
-    Body: JSON.stringify(data),
-    ContentType: 'application/json',
+  await ddb.send(new PutCommand({
+    TableName: TOURNAMENT_TABLE,
+    Item: { PK: 'STATE', ...data },
   }));
 }
 
-// ─── Votes (one S3 object per vote: votes/<matchupId>::<voterId>) ──────────────
+// ─── Votes (PK=matchupId, SK=voterId) ────────────────────────────────────────
 
 async function getVote(matchupId, voterId) {
-  try {
-    const result = await s3.send(new GetObjectCommand({
-      Bucket: DATA_BUCKET,
-      Key: `votes/${matchupId}::${voterId}`,
-    }));
-    const body = await streamToString(result.Body);
-    return JSON.parse(body);
-  } catch (e) {
-    if (e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404) {
-      return undefined;
-    }
-    throw e;
-  }
+  const result = await ddb.send(new GetCommand({
+    TableName: VOTES_TABLE,
+    Key: { matchupId, voterId },
+  }));
+  return result.Item || undefined;
 }
 
-// Throws if vote already exists (IfNoneMatch: '*' → 412 PreconditionFailed)
+// Throws ConditionalCheckFailedException if vote already exists
 async function saveVote(matchupId, voterId, teamId) {
-  await s3.send(new PutObjectCommand({
-    Bucket: DATA_BUCKET,
-    Key: `votes/${matchupId}::${voterId}`,
-    Body: JSON.stringify({ teamId, ts: Date.now() }),
-    ContentType: 'application/json',
-    IfNoneMatch: '*',
+  await ddb.send(new PutCommand({
+    TableName: VOTES_TABLE,
+    Item: { matchupId, voterId, teamId, ts: Date.now() },
+    ConditionExpression: 'attribute_not_exists(matchupId)',
   }));
 }
 
 async function deleteVotesForMatchup(matchupId) {
-  let continuationToken;
-  const keys = [];
+  let lastKey;
 
   do {
-    const result = await s3.send(new ListObjectsV2Command({
-      Bucket: DATA_BUCKET,
-      Prefix: `votes/${matchupId}::`,
-      ContinuationToken: continuationToken,
+    const result = await ddb.send(new QueryCommand({
+      TableName: VOTES_TABLE,
+      KeyConditionExpression: 'matchupId = :mid',
+      ExpressionAttributeValues: { ':mid': matchupId },
+      ProjectionExpression: 'matchupId, voterId',
+      ExclusiveStartKey: lastKey,
     }));
-    for (const obj of result.Contents || []) keys.push(obj.Key);
-    continuationToken = result.IsTruncated ? result.NextContinuationToken : undefined;
-  } while (continuationToken);
 
-  for (const key of keys) {
-    await s3.send(new DeleteObjectCommand({ Bucket: DATA_BUCKET, Key: key }));
-  }
+    const items = result.Items || [];
+    if (items.length === 0) break;
+
+    // BatchWrite in chunks of 25 (DynamoDB limit)
+    for (let i = 0; i < items.length; i += 25) {
+      const batch = items.slice(i, i + 25);
+      await ddb.send(new BatchWriteCommand({
+        RequestItems: {
+          [VOTES_TABLE]: batch.map(item => ({
+            DeleteRequest: { Key: { matchupId: item.matchupId, voterId: item.voterId } },
+          })),
+        },
+      }));
+    }
+
+    lastKey = result.LastEvaluatedKey;
+  } while (lastKey);
 }
 
 // ─── Seeding (single S3 object: seeding.json) ─────────────────────────────
