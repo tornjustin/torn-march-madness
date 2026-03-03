@@ -16,8 +16,8 @@ provider:
     VOTES_TABLE:      ${self:custom.votesTable}
     DATA_BUCKET:      ${self:custom.dataBucket}
     IMAGES_BUCKET:    ${self:custom.imagesBucket}
-    JWT_SECRET:       ${ssm:/torn-march-madness/jwt-secret}
-    ADMIN_PASSWORD:   ${ssm:/torn-march-madness/admin-password}
+    JWT_SECRET:       ${env:JWT_SECRET}
+    ADMIN_PASSWORD:   ${env:ADMIN_PASSWORD}
     CORS_ORIGINS:     http://${self:custom.frontendBucket}.s3-website-us-east-1.amazonaws.com
 
   iam:

@@ -12,9 +12,6 @@ jobs:
 
     env:
       AWS_REGION: us-east-1
-      FUNCTION_NAME: torn-march-madness-api
-      FRONTEND_BUCKET: memm-frontend-${{ secrets.AWS_ACCOUNT_ID }}
-      API_URL: https://njrovvcx3k.execute-api.us-east-1.amazonaws.com
 
     steps:
       - name: Checkout code
@@ -34,32 +31,36 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # ── Backend: Package and update Lambda ───────────────────────────────────
+      # ── Backend: Deploy via Serverless Framework ─────────────────────────────
       - name: Install backend dependencies
         run: npm ci
         working-directory: backend
 
-      - name: Package backend
-        run: |
-          cd backend
-          zip -r /tmp/memm-lambda.zip . \
-            --exclude "data/*" \
-            --exclude "uploads/*" \
-            --exclude "*.test.js" \
-            --exclude ".env"
+      - name: Install Serverless Framework
+        run: npm install -g serverless@3
 
-      - name: Deploy backend to Lambda
-        run: |
-          aws lambda update-function-code \
-            --function-name ${{ env.FUNCTION_NAME }} \
-            --zip-file fileb:///tmp/memm-lambda.zip \
-            --region ${{ env.AWS_REGION }}
+      - name: Deploy backend infrastructure + code
+        run: serverless deploy --stage prod
+        env:
+          JWT_SECRET:     ${{ secrets.JWT_SECRET }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
 
-      - name: Wait for Lambda update
+      # Capture the API URL and frontend bucket from CloudFormation outputs
+      - name: Get stack outputs
+        id: stack
         run: |
-          aws lambda wait function-updated \
-            --function-name ${{ env.FUNCTION_NAME }} \
-            --region ${{ env.AWS_REGION }}
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name torn-march-madness-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
+            --output text)
+          FRONTEND_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name torn-march-madness-prod \
+            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
+            --output text)
+          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
+          echo "frontend_url=$FRONTEND_BUCKET" >> "$GITHUB_OUTPUT"
+          BUCKET_NAME="memm-frontend-${{ secrets.AWS_ACCOUNT_ID }}"
+          echo "bucket_name=$BUCKET_NAME" >> "$GITHUB_OUTPUT"
 
       # ── Frontend: Build and sync to S3 ───────────────────────────────────────
       - name: Install frontend dependencies
@@ -70,21 +71,21 @@ jobs:
         run: npm run build
         working-directory: frontend
         env:
-          VITE_API_URL: ${{ env.API_URL }}
+          VITE_API_URL: ${{ steps.stack.outputs.api_url }}
 
       - name: Sync HTML/CSS/JS with no-cache headers
         run: |
-          aws s3 sync frontend/dist/ "s3://${{ env.FRONTEND_BUCKET }}/" \
+          aws s3 sync frontend/dist/ "s3://${{ steps.stack.outputs.bucket_name }}/" \
             --delete \
             --cache-control "no-cache, no-store, must-revalidate" \
             --exclude "assets/*"
 
       - name: Sync hashed assets with long-lived cache
         run: |
-          aws s3 sync frontend/dist/assets/ "s3://${{ env.FRONTEND_BUCKET }}/assets/" \
+          aws s3 sync frontend/dist/assets/ "s3://${{ steps.stack.outputs.bucket_name }}/assets/" \
             --cache-control "public, max-age=31536000, immutable"
 
       - name: Print deployment URLs
         run: |
-          echo "Frontend: http://${{ env.FRONTEND_BUCKET }}.s3-website-us-east-1.amazonaws.com"
-          echo "API:      ${{ env.API_URL }}/api/tournament"
+          echo "Frontend: ${{ steps.stack.outputs.frontend_url }}"
+          echo "API:      ${{ steps.stack.outputs.api_url }}/api/tournament"

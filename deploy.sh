@@ -1,43 +1,45 @@
 #!/usr/bin/env bash
-# deploy.sh — manual redeploy script (runs the same steps as GitHub Actions)
-# Usage: ./deploy.sh
+# deploy.sh — manual deploy script
+# Requires: node, npm, serverless (v3), aws-cli
+# Usage: JWT_SECRET=xxx ADMIN_PASSWORD=yyy ./deploy.sh
 
 set -e
 
-FUNCTION_NAME="torn-march-madness-api"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 FRONTEND_BUCKET="memm-frontend-${ACCOUNT_ID}"
-API_URL="https://njrovvcx3k.execute-api.us-east-1.amazonaws.com"
+STACK_NAME="torn-march-madness-prod"
+
+# Verify required env vars
+if [ -z "$JWT_SECRET" ] || [ -z "$ADMIN_PASSWORD" ]; then
+  echo "Error: JWT_SECRET and ADMIN_PASSWORD must be set"
+  echo "Usage: JWT_SECRET=xxx ADMIN_PASSWORD=yyy ./deploy.sh"
+  exit 1
+fi
 
 echo "==> Deploying MEMM to AWS account ${ACCOUNT_ID}"
 
-# ── Backend ───────────────────────────────────────────────────────────────────
+# ── Backend (Serverless Framework) ─────────────────────────────────────────
 echo ""
-echo "==> Packaging backend..."
+echo "==> Installing backend dependencies..."
 cd "$(dirname "$0")/backend"
 npm ci --silent
-zip -r /tmp/memm-lambda.zip . \
-  --exclude "data/*" \
-  --exclude "uploads/*" \
-  --exclude "*.test.js" \
-  --exclude ".env" \
-  > /dev/null
 
-echo "==> Deploying Lambda function..."
-aws lambda update-function-code \
-  --function-name "$FUNCTION_NAME" \
-  --zip-file fileb:///tmp/memm-lambda.zip \
-  --region us-east-1 > /dev/null
+echo "==> Deploying backend via Serverless Framework..."
+cd ..
+npx serverless@3 deploy --stage prod
 
-aws lambda wait function-updated \
-  --function-name "$FUNCTION_NAME" \
-  --region us-east-1
-echo "    Lambda updated."
+# Get the API URL from CloudFormation outputs
+API_URL=$(aws cloudformation describe-stacks \
+  --stack-name "$STACK_NAME" \
+  --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
+  --output text)
 
-# ── Frontend ──────────────────────────────────────────────────────────────────
+echo "    API deployed: ${API_URL}"
+
+# ── Frontend ──────────────────────────────────────────────────────────────
 echo ""
 echo "==> Building frontend..."
-cd ../frontend
+cd frontend
 npm ci --silent
 VITE_API_URL="$API_URL" npm run build > /dev/null
 
