@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { getTournament } from '../api';
+import { Link, useSearchParams } from 'react-router-dom';
+import { getTournament, getVoteStatus } from '../api';
+import { ensureVoterToken } from '../utils/voter';
 
 // ─── Round config ──────────────────────────────────────────────────────────────
 const ROUND_NAMES = { 1: 'Round of 16', 2: 'Round of 8', 3: 'Sweet 16', 4: 'Elite 8', 5: 'Final Four', 6: 'Championship' };
 
 // ─── Single matchup cell (used in desktop bracket + Final Four) ────────────────
-function MatchupCell({ matchup }) {
+function MatchupCell({ matchup, votedMatchups }) {
   if (!matchup) return <div className="bracket-cell empty" />;
 
   const { team1, team2, status, winnerId, votes, id } = matchup;
+  const hasVoted = votedMatchups?.has(id);
   const total = (votes?.team1 || 0) + (votes?.team2 || 0);
   const pct1 = total ? Math.round((votes.team1 / total) * 100) : 50;
   const pct2 = total ? 100 - pct1 : 50;
@@ -52,8 +54,9 @@ function MatchupCell({ matchup }) {
 
   if (canVote) {
     return (
-      <Link to={`/vote/${id}`} className="bracket-cell active" style={{ textDecoration: 'none' }}>
+      <Link to={`/vote/${id}`} className={`bracket-cell active ${hasVoted ? 'voted' : 'needs-vote'}`} style={{ textDecoration: 'none' }}>
         {inner}
+        {hasVoted && <div className="bracket-voted-badge">Voted</div>}
       </Link>
     );
   }
@@ -66,8 +69,9 @@ function MatchupCell({ matchup }) {
 }
 
 // ─── Mobile card for a single matchup — large photo style ────────────────────
-function MobileMatchupCard({ matchup }) {
+function MobileMatchupCard({ matchup, votedMatchups }) {
   const { team1, team2, status, winnerId, votes, id } = matchup;
+  const hasVoted = votedMatchups?.has(id);
   const total = (votes?.team1 || 0) + (votes?.team2 || 0);
   const pct1 = total ? Math.round((votes.team1 / total) * 100) : 50;
   const pct2 = total ? 100 - pct1 : 50;
@@ -79,7 +83,7 @@ function MobileMatchupCard({ matchup }) {
   const isWinner2 = isClosed && winnerId === team2?.id;
 
   const cardContent = (
-    <div className={`mc-card ${isActive ? 'mc-active' : ''} ${isClosed ? 'mc-closed' : ''}`}>
+    <div className={`mc-card ${isActive ? 'mc-active' : ''} ${isClosed ? 'mc-closed' : ''} ${isActive && hasVoted ? 'mc-voted' : ''} ${isActive && !hasVoted ? 'mc-needs-vote' : ''}`}>
       {/* Two-photo arena */}
       <div className="mc-arena">
         {/* Team 1 half */}
@@ -100,8 +104,10 @@ function MobileMatchupCard({ matchup }) {
 
         {/* VS badge */}
         <div className="mc-vs-wrap">
-          <div className="mc-vs">
-            {isActive ? <span className="mc-vs-live">VOTE</span> : 'VS'}
+          <div className={`mc-vs ${isActive && hasVoted ? 'mc-vs-voted' : ''}`}>
+            {isActive && hasVoted ? <span className="mc-vs-done">Voted</span>
+              : isActive ? <span className="mc-vs-live">VOTE</span>
+              : 'VS'}
           </div>
         </div>
 
@@ -138,20 +144,14 @@ function MobileMatchupCard({ matchup }) {
 }
 
 // ─── Mobile matchup list — only shows rounds up to the current active round ───
-function MobileMatchupList({ matchups }) {
+function MobileMatchupList({ matchups, votedMatchups }) {
   const allRounds = [...new Set(matchups.map(m => m.round))].sort((a, b) => a - b);
 
-  // Find the highest round with at least one active or closed matchup
-  const activeRound = allRounds.reduceRight((found, r) => {
-    if (found) return found;
-    return matchups.some(m => m.round === r && (m.status === 'active' || m.status === 'closed')) ? r : null;
-  }, null);
+  // Find the round with active matchups; fall back to round 1 as preview
+  const activeRound = allRounds.find(r => matchups.some(m => m.round === r && m.status === 'active'))
+    ?? allRounds[0];
 
-  // Show only rounds that have started (active or closed matchups).
-  // If nothing has started yet, show round 1 as a preview.
-  const cutoffRound = activeRound ?? allRounds[0];
-
-  const visibleRounds = allRounds.filter(r => r <= cutoffRound);
+  const visibleRounds = [activeRound];
 
   return (
     <div className="mobile-matchup-list">
@@ -161,7 +161,7 @@ function MobileMatchupList({ matchups }) {
           {matchups
             .filter(m => m.round === round)
             .sort((a, b) => a.position - b.position)
-            .map(m => <MobileMatchupCard key={m.id} matchup={m} />)}
+            .map(m => <MobileMatchupCard key={m.id} matchup={m} votedMatchups={votedMatchups} />)}
         </div>
       ))}
     </div>
@@ -169,7 +169,7 @@ function MobileMatchupList({ matchups }) {
 }
 
 // ─── Region bracket (4 rounds, horizontal — desktop only) ─────────────────────
-function RegionBracket({ region, matchups }) {
+function RegionBracket({ region, matchups, votedMatchups }) {
   const GAME_H = 82;
   const COL_W = 168;
   const COL_GAP = 28;
@@ -252,7 +252,7 @@ function RegionBracket({ region, matchups }) {
                   height: GAME_H
                 }}
               >
-                <MatchupCell matchup={m} />
+                <MatchupCell matchup={m} votedMatchups={votedMatchups} />
               </div>
             ))
           ))}
@@ -260,82 +260,105 @@ function RegionBracket({ region, matchups }) {
       </div>
 
       {/* Mobile list view */}
-      <MobileMatchupList matchups={matchups} regionName={region.name} />
+      <MobileMatchupList matchups={matchups} regionName={region.name} votedMatchups={votedMatchups} />
     </div>
   );
 }
 
 // ─── Final Four + Championship ────────────────────────────────────────────────
-function FinalFour({ matchups }) {
+function FinalFour({ matchups, votedMatchups }) {
   const ff1 = matchups.find(m => m.id === 'ff_r5_p1');
   const ff2 = matchups.find(m => m.id === 'ff_r5_p2');
   const champ = matchups.find(m => m.id === 'ff_r6_p1');
+  const finalsMatchups = [ff1, ff2, champ].filter(Boolean);
 
   return (
     <div className="final-four-section">
-      <h2 className="final-four-title">⚔ Final Four &amp; Championship ⚔</h2>
+      <h2 className="final-four-title">Final Four &amp; Championship</h2>
       <div className="final-four-grid">
         <div className="ff-col">
           <div className="ff-round-label">Final Four</div>
-          {ff1 ? <MatchupCell matchup={ff1} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
+          {ff1 ? <MatchupCell matchup={ff1} votedMatchups={votedMatchups} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
           <div style={{ height: 32 }} />
-          {ff2 ? <MatchupCell matchup={ff2} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
+          {ff2 ? <MatchupCell matchup={ff2} votedMatchups={votedMatchups} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
         </div>
-        <div className="ff-center-arrow">⟹</div>
+        <div className="ff-center-arrow">&rarr;</div>
         <div className="ff-col">
           <div className="ff-round-label championship-label">Championship</div>
           <div style={{ marginTop: 40 }}>
-            {champ ? <MatchupCell matchup={champ} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
+            {champ ? <MatchupCell matchup={champ} votedMatchups={votedMatchups} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
           </div>
         </div>
       </div>
 
-      {/* Mobile Final Four list */}
-      <div className="mobile-ff-list">
-        <div className="mobile-round-group">
-          <h4 className="mobile-round-heading">Final Four</h4>
-          {ff1 && <MobileMatchupCard matchup={ff1} />}
-          {ff2 && <MobileMatchupCard matchup={ff2} />}
-        </div>
-        <div className="mobile-round-group">
-          <h4 className="mobile-round-heading">Championship</h4>
-          {champ && <MobileMatchupCard matchup={champ} />}
-        </div>
-      </div>
+      {/* Mobile Final Four list — same style as region rounds */}
+      <MobileMatchupList matchups={finalsMatchups} votedMatchups={votedMatchups} />
     </div>
   );
 }
 
 // ─── Active matchups bar ───────────────────────────────────────────────────────
-function ActiveMatchups({ matchups }) {
+function ActiveMatchups({ matchups, votedMatchups }) {
   const active = matchups.filter(m => m.status === 'active' && m.team1 && m.team2);
   if (!active.length) return null;
+  const votedCount = active.filter(m => votedMatchups?.has(m.id)).length;
   return (
     <div className="active-matchups-bar">
-      <div className="active-bar-label">🗡 Open Voting</div>
-      {active.map(m => (
-        <Link key={m.id} to={`/vote/${m.id}`} className="active-matchup-chip">
-          <span>{m.team1?.name}</span>
-          <span className="vs-chip">vs</span>
-          <span>{m.team2?.name}</span>
-        </Link>
-      ))}
+      <div className="active-bar-header">
+        <div className="active-bar-label">Open Voting</div>
+        <div className="active-bar-progress">{votedCount} / {active.length} voted</div>
+      </div>
+      <div className="active-bar-chips">
+        {active.map(m => {
+          const voted = votedMatchups?.has(m.id);
+          return (
+            <Link key={m.id} to={`/vote/${m.id}`} className={`active-matchup-chip ${voted ? 'chip-voted' : 'chip-needs-vote'}`}>
+              {voted && <span className="chip-check">&#10003;</span>}
+              <span>{m.team1?.name}</span>
+              <span className="vs-chip">vs</span>
+              <span>{m.team2?.name}</span>
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function BracketPage() {
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tab, setTab] = useState('region1');
+  const [tab, setTab] = useState(searchParams.get('region') || 'region1');
+  const [votedMatchups, setVotedMatchups] = useState(new Set());
+
+  // Sync tab when navigating back with ?region= param
+  useEffect(() => {
+    const region = searchParams.get('region');
+    if (region) setTab(region);
+  }, [searchParams]);
 
   useEffect(() => {
-    getTournament()
-      .then(setData)
-      .catch(e => setError(e.message || 'Failed to load'))
-      .finally(() => setLoading(false));
+    (async () => {
+      await ensureVoterToken();
+      try {
+        const tournamentData = await getTournament();
+        setData(tournamentData);
+
+        // Fetch vote status for all active matchups in parallel
+        const active = tournamentData.matchups.filter(m => m.status === 'active' && m.team1 && m.team2);
+        const statuses = await Promise.all(
+          active.map(m => getVoteStatus(m.id).then(s => s.voted ? m.id : null).catch(() => null))
+        );
+        setVotedMatchups(new Set(statuses.filter(Boolean)));
+      } catch (e) {
+        setError(e.message || 'Failed to load');
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   if (loading) return <div className="loading-wrap"><div className="loading-ring" /><span>Loading the Bracket…</span></div>;
@@ -344,9 +367,10 @@ export default function BracketPage() {
   const { settings, regions, matchups } = data;
   const hasMatchups = matchups.length > 0;
 
+  const finalsHasActive = matchups.some(m => !m.regionId && m.status === 'active' && m.team1 && m.team2);
   const tabs = [
     ...regions.map(r => ({ id: r.id, label: r.name })),
-    { id: 'finals', label: '⚔ Finals' }
+    { id: 'finals', label: 'FINAL 4' }
   ];
 
   return (
@@ -362,18 +386,20 @@ export default function BracketPage() {
         </div>
       ) : (
         <>
-          <ActiveMatchups matchups={matchups} />
-
           <div className="tabs">
             {tabs.map(t => (
-              <button key={t.id} className={`tab-btn ${tab === t.id ? 'active' : ''}`} onClick={() => setTab(t.id)}>
+              <button
+                key={t.id}
+                className={`tab-btn ${tab === t.id ? 'active' : ''} ${t.id === 'finals' && finalsHasActive ? 'tab-finals-active' : ''}`}
+                onClick={() => setTab(t.id)}
+              >
                 {t.label}
               </button>
             ))}
           </div>
 
           {tab === 'finals' ? (
-            <FinalFour matchups={matchups} />
+            <FinalFour matchups={matchups} votedMatchups={votedMatchups} />
           ) : (
             <div className="region-panel">
               {regions.filter(r => r.id === tab).map(region => (
@@ -381,10 +407,13 @@ export default function BracketPage() {
                   key={region.id}
                   region={region}
                   matchups={matchups.filter(m => m.regionId === region.id)}
+                  votedMatchups={votedMatchups}
                 />
               ))}
             </div>
           )}
+
+          <ActiveMatchups matchups={matchups} votedMatchups={votedMatchups} />
         </>
       )}
 
@@ -400,6 +429,10 @@ export default function BracketPage() {
 
         .region-panel { overflow-x: auto; padding-bottom: 24px; }
         .region-bracket-wrap { min-width: 0; }
+        @media (max-width: 640px) {
+          .region-bracket-wrap { display: flex; flex-direction: column; }
+          .mobile-matchup-list { order: -1; }
+        }
 
         .region-title {
           font-family: var(--font-title);
@@ -436,13 +469,24 @@ export default function BracketPage() {
 
         /* ── Mobile matchup list (hidden on desktop) ─────────── */
         .mobile-matchup-list { display: none; }
-        .mobile-ff-list { display: none; }
+        /* Finals active tab */
+        .tab-finals-active {
+          background: var(--gold) !important;
+          color: var(--bg-deepest) !important;
+          border-color: var(--gold) !important;
+          font-weight: 700;
+          box-shadow: 0 0 16px rgba(212,175,55,0.4);
+          animation: finalsTabPulse 2s ease-in-out infinite;
+        }
+        @keyframes finalsTabPulse {
+          0%, 100% { box-shadow: 0 0 12px rgba(212,175,55,0.3); }
+          50% { box-shadow: 0 0 24px rgba(212,175,55,0.6); }
+        }
 
         @media (max-width: 640px) {
           .desktop-bracket { display: none; }
           .region-vote-hint { display: none; }
           .mobile-matchup-list { display: flex; flex-direction: column; gap: 10px; }
-          .mobile-ff-list { display: flex; flex-direction: column; gap: 16px; margin-top: 8px; }
 
           /* hide the desktop ff grid on mobile */
           .final-four-grid { display: none; }
@@ -471,6 +515,14 @@ export default function BracketPage() {
         .mc-card.mc-active {
           border-color: var(--gold-dim);
           box-shadow: 0 0 12px rgba(212,175,55,0.18);
+        }
+        .mc-card.mc-voted {
+          border-color: var(--green-bright);
+          box-shadow: 0 0 10px rgba(39,165,90,0.15);
+        }
+        .mc-card.mc-needs-vote {
+          border-color: var(--gold);
+          box-shadow: 0 0 12px rgba(212,175,55,0.25);
         }
         .mc-card.mc-closed { opacity: 0.9; }
 
@@ -593,6 +645,15 @@ export default function BracketPage() {
           letter-spacing: 0.06em;
           box-shadow: 0 0 24px rgba(0,0,0,0.9), 0 0 16px rgba(212,175,55,0.2);
         }
+        .mc-vs-voted {
+          border-color: var(--green-bright);
+          background: rgba(39,165,90,0.15);
+        }
+        .mc-vs-done {
+          font-size: 0.65rem;
+          letter-spacing: 0.08em;
+          color: var(--green-bright);
+        }
         .mc-vs-live {
           font-size: 0.75rem;
           letter-spacing: 0.1em;
@@ -632,6 +693,31 @@ export default function BracketPage() {
         .bracket-cell.active {
           border-color: var(--gold-dim);
           box-shadow: 0 0 8px rgba(212,175,55,0.15);
+        }
+        .bracket-cell.active.voted {
+          border-color: var(--green-bright);
+          box-shadow: 0 0 8px rgba(39,165,90,0.2);
+        }
+        .bracket-cell.active.needs-vote {
+          border-color: var(--gold);
+          box-shadow: 0 0 10px rgba(212,175,55,0.25);
+          animation: needsVotePulse 2.5s ease-in-out infinite;
+        }
+        @keyframes needsVotePulse {
+          0%, 100% { box-shadow: 0 0 8px rgba(212,175,55,0.15); }
+          50% { box-shadow: 0 0 14px rgba(212,175,55,0.35); }
+        }
+        .bracket-voted-badge {
+          position: absolute;
+          top: 2px;
+          right: 3px;
+          font-family: var(--font-heading);
+          font-size: 0.5rem;
+          color: var(--green-bright);
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          line-height: 1;
+          z-index: 2;
         }
         .bracket-cell.closed { opacity: 0.85; }
         .bracket-cell.empty {
@@ -732,15 +818,17 @@ export default function BracketPage() {
 
         /* ─ Active matchups bar ────────────────────────────── */
         .active-matchups-bar {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: center;
-          gap: 10px;
           background: rgba(212,175,55,0.06);
           border: 1px solid var(--border-gold);
           border-radius: var(--radius);
-          padding: 10px 16px;
-          margin-bottom: 24px;
+          padding: 14px 16px;
+          margin-top: 32px;
+        }
+        .active-bar-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 10px;
         }
         .active-bar-label {
           font-family: var(--font-heading);
@@ -749,6 +837,17 @@ export default function BracketPage() {
           letter-spacing: 0.1em;
           text-transform: uppercase;
           white-space: nowrap;
+        }
+        .active-bar-progress {
+          font-family: var(--font-heading);
+          font-size: 0.72rem;
+          color: var(--text-dim);
+          letter-spacing: 0.06em;
+        }
+        .active-bar-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
         }
         .active-matchup-chip {
           display: flex;
@@ -765,6 +864,17 @@ export default function BracketPage() {
           transition: all 0.15s;
         }
         .active-matchup-chip:hover { border-color: var(--gold); color: var(--gold); text-decoration: none; box-shadow: var(--shadow-gold); }
+        .active-matchup-chip.chip-voted {
+          border-color: rgba(39,165,90,0.4);
+          opacity: 0.7;
+        }
+        .active-matchup-chip.chip-needs-vote {
+          border-color: var(--gold);
+        }
+        .chip-check {
+          color: var(--green-bright);
+          font-size: 0.7rem;
+        }
         .vs-chip { color: var(--text-muted); font-size: 0.6rem; }
 
         /* ─ Tabs ───────────────────────────────────────────── */
@@ -787,19 +897,20 @@ export default function BracketPage() {
         /* ─ Active matchups bar mobile ─────────────────────── */
         @media (max-width: 640px) {
           .active-matchups-bar {
+            padding: 10px 12px;
+          }
+          .active-bar-chips {
             flex-wrap: nowrap;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
-            padding: 8px 12px;
           }
-          .active-matchups-bar::-webkit-scrollbar { display: none; }
+          .active-bar-chips::-webkit-scrollbar { display: none; }
           .active-matchup-chip {
             flex-shrink: 0;
             font-size: 0.68rem;
             padding: 4px 10px;
           }
-          .active-bar-label { flex-shrink: 0; }
         }
 
         /* ─ Final Four ─────────────────────────────────────── */
@@ -833,7 +944,8 @@ export default function BracketPage() {
         .ff-col .bracket-cell { width: 200px; min-height: 82px; }
 
         @media (max-width: 640px) {
-          .final-four-title { font-size: 1.1rem; margin-bottom: 0; }
+          .final-four-title { display: none; }
+          .final-four-section { padding: 0; }
         }
       `}</style>
     </div>

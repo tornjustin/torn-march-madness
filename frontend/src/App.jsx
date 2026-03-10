@@ -1,7 +1,13 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, useParams } from 'react-router-dom';
 import BracketPage from './pages/BracketPage';
 import VotingPage from './pages/VotingPage';
+
+// Key wrapper forces full remount when matchupId changes (clean state)
+function VotingPageKeyed() {
+  const { matchupId } = useParams();
+  return <VotingPage key={matchupId} />;
+}
 import AdminPage from './pages/AdminPage';
 import StreamPage from './pages/StreamPage';
 import EmbedPage from './pages/EmbedPage';
@@ -26,8 +32,6 @@ function Nav() {
         </div>
         <div className="nav-links">
           <Link to="/" className={loc.pathname === '/' ? 'active' : ''}>Bracket</Link>
-          <Link to="/stream" className="nav-stream-link" target="_blank">Stream View</Link>
-          <Link to="/seeding" className={loc.pathname.startsWith('/seeding') ? 'active' : ''}>Staff</Link>
           <Link to="/admin" className={loc.pathname.startsWith('/admin') ? 'active' : ''}>Admin</Link>
         </div>
       </div>
@@ -67,7 +71,7 @@ export default function App() {
       <Nav />
       <Routes>
         <Route path="/" element={<BracketPage />} />
-        <Route path="/vote/:matchupId" element={<VotingPage />} />
+        <Route path="/vote/:matchupId" element={<VotingPageKeyed />} />
         <Route path="/admin/*" element={<AdminPage />} />
         <Route path="/seeding" element={<SeedingBallotPage />} />
         <Route path="/seeding/intake" element={<SeedingIntakePage />} />

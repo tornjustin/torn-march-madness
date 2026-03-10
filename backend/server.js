@@ -8,6 +8,8 @@ const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { getData, saveData, getVote, saveVote, deleteVotesForMatchup, getSeedingData, saveSeedingData } = require('./db');
+// bracketRenderer.js (SVG) kept for backwards compat but PNG is primary
+// const { renderBracketSVG } = require('./bracketRenderer');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const app = express();
@@ -308,9 +310,62 @@ app.get('/api/dashboard', async (req, res) => {
   }
 });
 
+// ─── Bracket Image (PNG) ─────────────────────────────────────────────────────
+const { execSync } = require('child_process');
+const fs = require('fs');
+
+const BRACKET_PNG = path.join(__dirname, 'data', 'bracket.png');
+const BRACKET_SCRIPT = path.join(__dirname, 'generate_bracket.py');
+
+// Serve the pre-generated bracket PNG
+app.get('/api/bracket/image', async (req, res) => {
+  try {
+    if (!fs.existsSync(BRACKET_PNG)) {
+      return res.status(404).json({ error: 'Bracket image not yet generated. Use POST /api/admin/bracket/generate to create it.' });
+    }
+    const stat = fs.statSync(BRACKET_PNG);
+    res.set({
+      'Content-Type': 'image/png',
+      'Cache-Control': 'public, max-age=300',
+      'Content-Disposition': 'inline; filename="memm-bracket.png"',
+      'Content-Length': stat.size,
+      'Last-Modified': stat.mtime.toUTCString(),
+    });
+    fs.createReadStream(BRACKET_PNG).pipe(res);
+  } catch (e) {
+    console.error('GET /api/bracket/image error:', e);
+    res.status(500).json({ error: 'Failed to serve bracket image' });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ADMIN API
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// Generate/regenerate bracket PNG (admin only)
+app.post('/api/admin/bracket/generate', adminAuth, async (req, res) => {
+  try {
+    console.log('[bracket] Regenerating bracket image...');
+    const output = execSync(`python3 "${BRACKET_SCRIPT}"`, {
+      timeout: 60000,
+      cwd: __dirname,
+      encoding: 'utf-8',
+    });
+    console.log('[bracket]', output.trim());
+    if (!fs.existsSync(BRACKET_PNG)) {
+      return res.status(500).json({ error: 'Generation completed but file not found' });
+    }
+    const stat = fs.statSync(BRACKET_PNG);
+    res.json({
+      success: true,
+      size: stat.size,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error('[bracket] Generation error:', e.message);
+    res.status(500).json({ error: 'Failed to generate bracket: ' + e.message });
+  }
+});
 
 app.post('/api/admin/login', loginLimiter, (req, res) => {
   if (req.body.password !== ADMIN_PASSWORD) {

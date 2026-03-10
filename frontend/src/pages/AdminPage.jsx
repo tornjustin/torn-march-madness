@@ -392,6 +392,7 @@ function TeamSelect({ label, value, teams, onChange, current }) {
 // ─── Matchup Manager ──────────────────────────────────────────────────────────
 function MatchupManager({ data, token, onRefresh }) {
   const [statusMsg, setStatusMsg] = useState({});
+  const [closing, setClosing] = useState(false);
   const ROUND_NAMES = { 1: 'Round of 16', 2: 'Round of 8', 3: 'Sweet 16', 4: 'Elite 8', 5: 'Final Four', 6: 'Championship' };
 
   async function changeStatus(id, status) {
@@ -400,11 +401,44 @@ function MatchupManager({ data, token, onRefresh }) {
       setStatusMsg(m => ({ ...m, [id]: `→ ${status}` }));
       onRefresh();
       setTimeout(() => setStatusMsg(m => { const n = { ...m }; delete n[id]; return n; }), 2000);
-    } catch (e) { alert(e.error || e.message); }
+    } catch (e) {
+      if (e.status === 401) {
+        sessionStorage.removeItem('memm_admin_token');
+        alert('Session expired. Please log in again.');
+        window.location.reload();
+      } else {
+        alert(e.error || e.message);
+      }
+    }
+  }
+
+  async function closeCurrentRound() {
+    const activeMatchups = data.matchups.filter(m => m.status === 'active');
+    if (!activeMatchups.length) return alert('No active matchups to close.');
+    const round = activeMatchups[0].round;
+    const roundMatchups = activeMatchups.filter(m => m.round === round);
+    const roundName = ROUND_NAMES[round] || `Round ${round}`;
+    if (!confirm(`Close all ${roundMatchups.length} active matchups in ${roundName}?`)) return;
+    setClosing(true);
+    try {
+      for (const m of roundMatchups) {
+        await setMatchupStatus(m.id, 'closed', token);
+      }
+      onRefresh();
+    } catch (e) {
+      if (e.status === 401) {
+        sessionStorage.removeItem('memm_admin_token');
+        alert('Session expired. Please log in again.');
+        window.location.reload();
+      } else {
+        alert(e.error || e.message);
+      }
+    } finally {
+      setClosing(false);
+    }
   }
 
   async function handleWinner(matchupId, winnerId) {
-    if (!confirm('Declare this winner? They will advance to the next matchup.')) return;
     try {
       const result = await setWinner(matchupId, winnerId, token);
       if (result.isTournamentWinner) {
@@ -412,13 +446,19 @@ function MatchupManager({ data, token, onRefresh }) {
         alert(`🏆 ${team?.name} is the Middle-earth March Madness Champion!`);
       }
       onRefresh();
-    } catch (e) { alert(e.error || e.message); }
+    } catch (e) {
+      if (e.status === 401) { sessionStorage.removeItem('memm_admin_token'); alert('Session expired.'); window.location.reload(); }
+      else alert(e.error || e.message);
+    }
   }
 
   async function handleReset(id) {
     if (!confirm('Reset votes for this matchup?')) return;
     try { await resetVotes(id, token); onRefresh(); }
-    catch (e) { alert(e.error || e.message); }
+    catch (e) {
+      if (e.status === 401) { sessionStorage.removeItem('memm_admin_token'); alert('Session expired.'); window.location.reload(); }
+      else alert(e.error || e.message);
+    }
   }
 
   // Group matchups
@@ -431,7 +471,14 @@ function MatchupManager({ data, token, onRefresh }) {
 
   return (
     <div>
-      <div className="admin-section-header"><h2>Matchup Control</h2></div>
+      <div className="admin-section-header">
+        <h2>Matchup Control</h2>
+        {data.matchups.some(m => m.status === 'active') && (
+          <button className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '6px 16px' }} onClick={closeCurrentRound} disabled={closing}>
+            {closing ? 'Closing…' : `Close ${ROUND_NAMES[data.matchups.find(m => m.status === 'active').round] || 'Current Round'}`}
+          </button>
+        )}
+      </div>
       <p style={{ color: 'var(--text-dim)', fontSize: '0.85rem', marginBottom: 20 }}>
         Activate matchups to open voting, declare winners to advance, and close matchups when done.
       </p>
@@ -451,7 +498,7 @@ function MatchupManager({ data, token, onRefresh }) {
                 const t2 = m.team2;
                 const total = (m.votes?.team1 || 0) + (m.votes?.team2 || 0);
                 const region = data.regions.find(r => r.id === m.regionId);
-                const canDeclareWinner = m.status !== 'pending' && t1 && t2 && !m.winnerId;
+                const canDeclareWinner = m.status === 'closed' && t1 && t2 && !m.winnerId;
 
                 return (
                   <div key={m.id} className={`matchup-row status-${m.status}`}>
@@ -469,6 +516,7 @@ function MatchupManager({ data, token, onRefresh }) {
                         total={total}
                         isWinner={m.winnerId === t1?.id}
                         canWin={canDeclareWinner}
+                        isLeading={total > 0 && (m.votes?.team1 || 0) >= (m.votes?.team2 || 0)}
                         onWin={() => handleWinner(m.id, t1.id)}
                         slot={1}
                       />
@@ -479,6 +527,7 @@ function MatchupManager({ data, token, onRefresh }) {
                         total={total}
                         isWinner={m.winnerId === t2?.id}
                         canWin={canDeclareWinner}
+                        isLeading={total > 0 && (m.votes?.team2 || 0) > (m.votes?.team1 || 0)}
                         onWin={() => handleWinner(m.id, t2.id)}
                         slot={2}
                       />
@@ -509,7 +558,7 @@ function MatchupManager({ data, token, onRefresh }) {
   );
 }
 
-function TeamMiniCard({ team, votes, total, isWinner, canWin, onWin, slot }) {
+function TeamMiniCard({ team, votes, total, isWinner, canWin, isLeading, onWin, slot }) {
   const pct = total ? Math.round((votes / total) * 100) : 0;
   return (
     <div className={`team-mini ${isWinner ? 'is-winner' : ''} ${!team ? 'tbd' : ''}`}>
@@ -518,9 +567,14 @@ function TeamMiniCard({ team, votes, total, isWinner, canWin, onWin, slot }) {
         <div className="team-mini-name">{team?.name || 'TBD'}</div>
         {total > 0 && <div className="team-mini-votes">{votes} votes ({pct}%)</div>}
       </div>
-      {canWin && team && (
+      {canWin && team && isLeading && (
         <button className="btn btn-gold" style={{ fontSize: '0.7rem', padding: '3px 10px', flexShrink: 0 }} onClick={onWin}>
-          ♛ Winner
+          ♛ Confirm Win
+        </button>
+      )}
+      {canWin && team && !isLeading && (
+        <button className="btn btn-ghost" style={{ fontSize: '0.65rem', padding: '3px 8px', flexShrink: 0, opacity: 0.6 }} onClick={onWin}>
+          Override Votes
         </button>
       )}
       {isWinner && <span style={{ color: 'var(--gold)', fontSize: '1.1rem' }}>♛</span>}
@@ -673,6 +727,10 @@ function Settings({ data, token, onRefresh }) {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [embedCopied, setEmbedCopied] = useState(false);
+  const [imageCopied, setImageCopied] = useState(false);
+  const [imageKey, setImageKey] = useState(Date.now());
+  const [generating, setGenerating] = useState(false);
+  const [genMsg, setGenMsg] = useState('');
 
   async function saveSettings(e) {
     e.preventDefault();
@@ -694,6 +752,49 @@ function Settings({ data, token, onRefresh }) {
       setEmbedCopied(true);
       setTimeout(() => setEmbedCopied(false), 2500);
     });
+  }
+
+  // Bracket image (PNG)
+  const imageApiUrl = `${window.location.origin.replace(':5173', ':3001')}/api/bracket/image`;
+  const imageImgTag = `<img src="${imageApiUrl}" alt="${data.settings.name} ${data.settings.year} Bracket" style="max-width: 100%; height: auto;" />`;
+
+  function downloadBracketImage() {
+    const link = document.createElement('a');
+    link.href = imageApiUrl;
+    link.download = `MEMM-${data.settings.year}-bracket.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function copyImageCode() {
+    navigator.clipboard.writeText(imageImgTag).then(() => {
+      setImageCopied(true);
+      setTimeout(() => setImageCopied(false), 2500);
+    });
+  }
+
+  async function regenerateBracketImage() {
+    setGenerating(true);
+    setGenMsg('');
+    try {
+      const res = await fetch(`${window.location.origin.replace(':5173', ':3001')}/api/admin/bracket/generate`, {
+        method: 'POST',
+        headers: { 'x-admin-token': token },
+      });
+      const json = await res.json();
+      if (json.success) {
+        setGenMsg(`Generated! (${(json.size / 1024).toFixed(0)} KB)`);
+        setImageKey(Date.now());
+      } else {
+        setGenMsg('Error: ' + (json.error || 'Unknown'));
+      }
+    } catch (e) {
+      setGenMsg('Error: ' + e.message);
+    } finally {
+      setGenerating(false);
+      setTimeout(() => setGenMsg(''), 5000);
+    }
   }
 
   return (
@@ -758,6 +859,58 @@ function Settings({ data, token, onRefresh }) {
         </div>
       </div>
 
+      {/* Bracket Image Card */}
+      <div className="card card-gold" style={{ maxWidth: 560, marginTop: 28 }}>
+        <h3 className="card-section-title">Bracket Image (PNG)</h3>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-dim)', marginBottom: 14, lineHeight: 1.6 }}>
+          High-resolution parchment bracket image for embedding in blog posts and sharing on social media. Click <strong style={{ color: 'var(--text)' }}>Regenerate</strong> after updating matchup results.
+        </p>
+
+        {/* Preview */}
+        <div style={{
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--radius)',
+          overflow: 'hidden',
+          marginBottom: 14,
+          background: '#d6c9ac',
+        }}>
+          <img
+            src={`${imageApiUrl}?t=${imageKey}`}
+            alt="Bracket Preview"
+            style={{ width: '100%', height: 'auto', display: 'block' }}
+            onError={e => { e.target.alt = 'Not yet generated — click Regenerate'; e.target.style.padding = '40px'; e.target.style.textAlign = 'center'; }}
+          />
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+          <button className="btn btn-gold" onClick={regenerateBracketImage} disabled={generating}>
+            {generating ? '⟳ Generating…' : '⟳ Regenerate'}
+          </button>
+          <button className="btn btn-outline" onClick={downloadBracketImage}>
+            ⬇ Download PNG
+          </button>
+          <a href={imageApiUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline" style={{ fontSize: '0.8rem' }}>
+            ↗ Full Size
+          </a>
+          {genMsg && <span style={{ fontSize: '0.78rem', color: genMsg.startsWith('Error') ? '#c44' : 'var(--gold)' }}>{genMsg}</span>}
+        </div>
+
+        {/* Embed code */}
+        <div className="embed-code-block">
+          <code>{imageImgTag}</code>
+        </div>
+        <div style={{ display: 'flex', gap: 10, marginTop: 12, alignItems: 'center' }}>
+          <button className="btn btn-gold" onClick={copyImageCode}>
+            {imageCopied ? '✓ Copied!' : '⎘ Copy Embed Code'}
+          </button>
+        </div>
+
+        <div className="dashboard-tip" style={{ marginTop: 14 }}>
+          <strong>Tip:</strong> After closing a round and declaring winners, click "Regenerate" to update the bracket image. The PNG is cached for 5 minutes.
+        </div>
+      </div>
+
       <style>{`
         .embed-code-block {
           background: var(--bg-deepest);
@@ -790,14 +943,14 @@ export default function AdminPage() {
   }, [token]);
 
   async function loadData() {
-    setLoading(true);
+    if (!data) setLoading(true);
     try { setData(await getTournament()); }
     catch (e) { console.error(e); }
     finally { setLoading(false); }
   }
 
   if (!token) return <AdminLogin onLogin={setToken} />;
-  if (loading || !data) return <div className="loading-wrap"><div className="loading-ring" /><span>Loading admin panel…</span></div>;
+  if (!data) return <div className="loading-wrap"><div className="loading-ring" /><span>Loading admin panel…</span></div>;
 
   const tabs = [
     { id: 'seeding-config', label: 'Seeding Config' },
@@ -1000,8 +1153,8 @@ export default function AdminPage() {
         .team-mini.tbd .team-mini-name { color: var(--text-muted); font-style: italic; }
         .team-mini-img { width: 32px; height: 32px; border-radius: 3px; object-fit: cover; object-position: top; flex-shrink: 0; }
         .team-mini-info { min-width: 0; }
-        .team-mini-name { font-family: var(--font-heading); font-size: 0.8rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .team-mini-votes { font-size: 0.68rem; color: var(--text-muted); }
+        .team-mini-name { font-family: var(--font-heading); font-size: 1rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .team-mini-votes { font-size: 0.85rem; color: var(--gold-dim); font-weight: 600; }
 
         /* Dashboard setup */
         .dashboard-matchup-item {

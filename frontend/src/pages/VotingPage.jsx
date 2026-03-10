@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getMatchup, vote as castVote, getVoteStatus } from '../api';
+import { getMatchup, getMatchups, vote as castVote, getVoteStatus } from '../api';
 import { ensureVoterToken } from '../utils/voter';
 
 export default function VotingPage() {
@@ -13,6 +13,7 @@ export default function VotingPage() {
   const [voting, setVoting] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [hoveredSide, setHoveredSide] = useState(null);
+  const [nextMatchupId, setNextMatchupId] = useState(null);
   const showResultRef = useRef(showResult);
 
   // Keep ref in sync for use inside intervals
@@ -21,9 +22,10 @@ export default function VotingPage() {
   const load = useCallback(async () => {
     await ensureVoterToken();
     try {
-      const [m, status] = await Promise.all([
+      const [m, status, allMatchups] = await Promise.all([
         getMatchup(matchupId),
-        getVoteStatus(matchupId)
+        getVoteStatus(matchupId),
+        getMatchups()
       ]);
       setMatchup(m);
       setVotes(m.votes);
@@ -31,6 +33,16 @@ export default function VotingPage() {
         setVotedFor(status.teamId);
         setShowResult(true);
       }
+      // Find next active matchup after the current one in bracket order
+      const sortKey = (m) => `${m.regionId || 'zz'}_${m.round}_${String(m.position).padStart(2, '0')}`;
+      const active = allMatchups
+        .filter(m => m.status === 'active' && m.team1 && m.team2)
+        .sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+      const currentIdx = active.findIndex(m => m.id === matchupId);
+      const next = currentIdx >= 0 && currentIdx < active.length - 1
+        ? active[currentIdx + 1]
+        : active.find(m => m.id !== matchupId); // wrap: pick first that isn't current
+      if (next) setNextMatchupId(next.id);
     } catch (e) {
       setError(e.error || e.message || 'Failed to load matchup');
     } finally {
@@ -146,10 +158,13 @@ export default function VotingPage() {
     <div className="voting-page">
       {/* Header */}
       <div className="vote-header">
-        <Link to="/" className="vote-back-link">← Bracket</Link>
+        <Link to={matchup.regionId ? `/?region=${matchup.regionId}` : '/?region=finals'} className="vote-back-link">← Bracket</Link>
         <div className="vote-round-label">{roundLabel || `Round ${round}`}</div>
         {isClosed && <div className="vote-closed-badge">Voting Closed</div>}
         {status === 'pending' && <div className="vote-pending-badge">Not Yet Open</div>}
+        {showResult && nextMatchupId && (
+          <Link to={`/vote/${nextMatchupId}`} className="vote-next-link">Next Matchup →</Link>
+        )}
       </div>
 
       {/* Arena */}
@@ -231,6 +246,20 @@ export default function VotingPage() {
           letter-spacing: 0.06em;
         }
         .vote-back-link:hover { color: var(--gold); text-decoration: none; }
+        .vote-next-link {
+          font-family: var(--font-heading);
+          font-size: 0.8rem;
+          color: var(--gold);
+          text-decoration: none;
+          letter-spacing: 0.06em;
+          background: rgba(212,175,55,0.12);
+          border: 1px solid rgba(212,175,55,0.3);
+          border-radius: 20px;
+          padding: 4px 14px;
+          white-space: nowrap;
+          transition: all 0.18s;
+        }
+        .vote-next-link:hover { background: rgba(212,175,55,0.25); text-decoration: none; }
         .vote-round-label {
           font-family: var(--font-heading);
           font-size: 0.9rem;
