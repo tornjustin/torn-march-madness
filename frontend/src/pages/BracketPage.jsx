@@ -170,8 +170,8 @@ function MobileMatchupList({ matchups, votedMatchups }) {
 
 // ─── Region bracket (4 rounds, horizontal — desktop only) ─────────────────────
 function RegionBracket({ region, matchups, votedMatchups }) {
-  const GAME_H = 82;
-  const COL_W = 168;
+  const GAME_H = 110;
+  const COL_W = 260;
   const COL_GAP = 28;
   const rounds = [1, 2, 3, 4];
   const baseCount = 8;
@@ -451,7 +451,7 @@ export default function BracketPage() {
         }
 
         /* ── Desktop bracket (hidden on mobile) ─────────────── */
-        .desktop-bracket { min-width: 760px; }
+        .desktop-bracket { min-width: 1124px; }
         .region-bracket-labels {
           display: flex;
           margin-bottom: 8px;
@@ -735,10 +735,11 @@ export default function BracketPage() {
           flex: 1;
           display: flex;
           align-items: center;
-          gap: 5px;
-          padding: 3px 6px;
+          gap: 6px;
+          padding: 4px 8px;
           position: relative;
           transition: background 0.15s;
+          min-height: 0;
         }
         .bracket-team-seed {
           font-family: var(--font-heading);
@@ -755,8 +756,8 @@ export default function BracketPage() {
         .bracket-team.tbd { opacity: 0.4; }
 
         .bracket-team-img {
-          width: 24px;
-          height: 24px;
+          width: 30px;
+          height: 30px;
           border-radius: 3px;
           overflow: hidden;
           flex-shrink: 0;
@@ -771,13 +772,11 @@ export default function BracketPage() {
 
         .bracket-team-name {
           font-family: var(--font-heading);
-          font-size: 0.68rem;
+          font-size: 0.72rem;
           color: var(--text);
           flex: 1;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          line-height: 1.2;
+          line-height: 1.25;
+          word-break: break-word;
         }
         .bracket-team.winner .bracket-team-name { color: var(--gold); }
 
@@ -941,7 +940,7 @@ export default function BracketPage() {
         }
         .championship-label { color: var(--gold); }
         .ff-center-arrow { font-size: 2rem; color: var(--gold-dim); }
-        .ff-col .bracket-cell { width: 200px; min-height: 82px; }
+        .ff-col .bracket-cell { width: 260px; min-height: 110px; }
 
         @media (max-width: 640px) {
           .final-four-title { display: none; }
