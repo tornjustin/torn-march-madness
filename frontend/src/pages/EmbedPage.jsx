@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { getTournament } from '../api';
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
-const G  = 60;              // game (cell) height px
-const CW = 86;              // column width px
+const G  = 90;              // game (cell) height px
+const CW = 160;             // column width px
 const CG = 10;              // column gap px
-const CS = CW + CG;         // column stride = 96
-const RW = 4 * CS - CG;    // region width = 374
-const RH = 8 * G;           // region height = 480 (8 games in round 1)
+const CS = CW + CG;         // column stride = 170
+const RW = 4 * CS - CG;    // region width = 670
+const RH = 8 * G;           // region height = 720 (8 games in round 1)
 const SG = 28;              // vertical gap between top/bottom region pair
-const CTR = 112;            // center column width
+const CTR = 140;            // center column width
 const TH  = 2 * RH + SG;   // total bracket height = 988
 const TW  = 2 * (RW + CG) + CTR; // total bracket width = 880
 
@@ -478,8 +478,8 @@ export default function EmbedPage() {
           flex: 1;
           display: flex;
           align-items: center;
-          gap: 4px;
-          padding: 2px 5px;
+          gap: 5px;
+          padding: 3px 6px;
           transition: background 0.12s;
           min-width: 0;
         }
@@ -511,13 +511,11 @@ export default function EmbedPage() {
         .ec-thumb img { width: 100%; height: 100%; object-fit: cover; }
         .ec-name {
           font-family: 'Inter', system-ui, sans-serif;
-          font-size: 0.62rem;
+          font-size: 0.65rem;
           color: #e8dcc8;
           flex: 1;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          line-height: 1.2;
+          line-height: 1.25;
+          word-break: break-word;
         }
         .ec-row.ec-win .ec-name { color: #d4af37; }
         .ec-pct {
