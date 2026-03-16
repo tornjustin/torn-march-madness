@@ -1302,6 +1302,50 @@ app.post('/api/admin/seeding/assign-divisions', adminAuth, async (req, res) => {
   }
 });
 
+// Manual division/seed assignment (bypasses snake distribution for offline seeding)
+app.post('/api/admin/seeding/assign-manual', adminAuth, async (req, res) => {
+  try {
+    const { assignments } = req.body;
+    if (!Array.isArray(assignments) || assignments.length === 0) {
+      return res.status(400).json({ error: 'assignments array required' });
+    }
+
+    const seeding = await getSeedingData();
+
+    // Clear all existing assignments
+    for (const c of seeding.contenders) {
+      c.divisionId = null;
+      c.seed = null;
+      c.selected = false;
+    }
+
+    const errors = [];
+    let assigned = 0;
+
+    for (const a of assignments) {
+      const c = seeding.contenders.find(x => x.id === a.contenderId);
+      if (!c) {
+        errors.push(`Contender ${a.contenderId} not found`);
+        continue;
+      }
+      c.divisionId = a.divisionId;
+      c.seed = a.seed;
+      c.selected = true;
+      assigned++;
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json({ error: 'Some contenders not found', errors });
+    }
+
+    await saveSeedingData(seeding);
+    res.json({ success: true, assigned });
+  } catch (e) {
+    console.error('Manual assignment error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Finalize: convert seeding results into tournament teams + bracket
 app.post('/api/admin/seeding/finalize', adminAuth, async (req, res) => {
   try {
