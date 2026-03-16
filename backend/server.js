@@ -1346,6 +1346,29 @@ app.post('/api/admin/seeding/assign-manual', adminAuth, async (req, res) => {
   }
 });
 
+// Backfill team links from contenders (one-time migration helper)
+app.post('/api/admin/teams/backfill-links', adminAuth, async (req, res) => {
+  try {
+    const seeding = await getSeedingData();
+    const data = await getData();
+    let updated = 0;
+    for (const team of data.teams) {
+      if (team.contenderId) {
+        const contender = seeding.contenders.find(c => c.id === team.contenderId);
+        if (contender?.link && !team.link) {
+          team.link = contender.link;
+          updated++;
+        }
+      }
+    }
+    await saveData(data);
+    res.json({ success: true, updated, total: data.teams.length });
+  } catch (e) {
+    console.error('Backfill links error:', e);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Finalize: convert seeding results into tournament teams + bracket
 app.post('/api/admin/seeding/finalize', adminAuth, async (req, res) => {
   try {
@@ -1367,6 +1390,7 @@ app.post('/api/admin/seeding/finalize', adminAuth, async (req, res) => {
       seed: c.seed,
       description: c.description || '',
       image: c.image,
+      link: c.link || '',
       createdAt: new Date().toISOString(),
       contenderId: c.id,
     }));

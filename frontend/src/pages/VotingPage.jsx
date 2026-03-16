@@ -132,6 +132,11 @@ export default function VotingPage() {
         <div className="vote-content">
           {isMyVote && <div className="voted-badge">✓ Your Vote</div>}
           <div className="vote-team-name">{team?.name || 'TBD'}</div>
+          {team?.link && (
+            <a href={team.link} target="_blank" rel="noreferrer" className="vote-buy-link" onClick={e => e.stopPropagation()}>
+              Learn More &amp; Buy ↗
+            </a>
+          )}
           {team?.description && <div className="vote-team-desc">{team.description}</div>}
 
           {showResult && total > 0 && (
@@ -380,6 +385,32 @@ export default function VotingPage() {
           color: rgba(255,255,255,0.6);
           margin-bottom: 16px;
           font-style: italic;
+        }
+
+        .vote-buy-link {
+          display: inline-block;
+          font-family: var(--font-heading);
+          font-size: 0.78rem;
+          color: var(--gold);
+          text-decoration: none;
+          letter-spacing: 0.06em;
+          padding: 5px 14px;
+          border: 1px solid rgba(212,175,55,0.4);
+          border-radius: 4px;
+          background: rgba(212,175,55,0.1);
+          margin-bottom: 12px;
+          transition: all 0.18s;
+          cursor: pointer;
+          position: relative;
+          z-index: 5;
+        }
+        .vote-buy-link:hover {
+          background: rgba(212,175,55,0.25);
+          border-color: var(--gold);
+          color: #fff;
+          text-decoration: none;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(212,175,55,0.2);
         }
 
         .voted-badge {
