@@ -14,6 +14,20 @@ import EmbedPage from './pages/EmbedPage';
 import SeedingIntakePage from './pages/SeedingIntakePage';
 import SeedingBallotPage from './pages/SeedingBallotPage';
 
+// Toggle dark theme on body for admin routes
+function ThemeToggle() {
+  const loc = useLocation();
+  React.useEffect(() => {
+    if (loc.pathname.startsWith('/admin')) {
+      document.body.classList.add('theme-dark');
+    } else {
+      document.body.classList.remove('theme-dark');
+    }
+    return () => document.body.classList.remove('theme-dark');
+  }, [loc.pathname]);
+  return null;
+}
+
 function Nav() {
   const loc = useLocation();
   // Hide nav on stream and embed pages
@@ -21,15 +35,9 @@ function Nav() {
   return (
     <nav className="site-nav">
       <div className="nav-inner">
-        <div className="nav-brand">
-          <a href="https://www.theonering.net" target="_blank" rel="noopener noreferrer" className="nav-torn-logo">
-            <img src="/torn-logo.png" alt="TheOneRing.net" />
-          </a>
-          <Link to="/" className="nav-logo">
-            <span className="nav-logo-main">Middle-earth</span>
-            <span className="nav-logo-sub">March Madness</span>
-          </Link>
-        </div>
+        <Link to="/" className="nav-brand">
+          <img src="/Middle-earth-March-Madness-2026.png" alt="Middle-earth March Madness 2026" className="nav-logo-img" />
+        </Link>
         <div className="nav-links">
           <Link to="/" className={loc.pathname === '/' ? 'active' : ''}>Bracket</Link>
           <Link to="/admin" className={loc.pathname.startsWith('/admin') ? 'active' : ''}>Admin</Link>
@@ -39,26 +47,18 @@ function Nav() {
         .nav-brand {
           display: flex;
           align-items: center;
-          gap: 12px;
+          text-decoration: none;
         }
-        .nav-torn-logo {
-          display: flex;
-          align-items: center;
-          flex-shrink: 0;
-        }
-        .nav-torn-logo img {
-          height: 44px;
+        .nav-logo-img {
+          height: 80px;
           width: auto;
         }
         @media (max-width: 640px) {
-          .nav-inner { height: 56px; }
-          .nav-logo-main { font-size: 0.9rem; }
-          .nav-logo-sub { font-size: 0.6rem; }
+          .nav-inner { height: 70px; }
+          .nav-logo-img { height: 60px; }
           .nav-links { gap: 16px; }
           .nav-links a { font-size: 0.75rem; letter-spacing: 0.06em; }
           .nav-stream-link { display: none; }
-          .nav-torn-logo img { height: 36px; }
-          .nav-brand { gap: 8px; }
         }
       `}</style>
     </nav>
@@ -68,6 +68,7 @@ function Nav() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeToggle />
       <Nav />
       <Routes>
         <Route path="/" element={<BracketPage />} />

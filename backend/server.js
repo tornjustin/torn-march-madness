@@ -379,10 +379,11 @@ app.post('/api/admin/login', loginLimiter, (req, res) => {
 app.put('/api/admin/settings', adminAuth, async (req, res) => {
   try {
     const data = await getData();
-    const { name, year, status } = req.body;
+    const { name, year, status, hideSeedings } = req.body;
     if (name !== undefined) data.settings.name = name;
     if (year !== undefined) data.settings.year = year;
     if (status !== undefined) data.settings.status = status;
+    if (hideSeedings !== undefined) data.settings.hideSeedings = hideSeedings;
     await saveData(data);
     res.json(data.settings);
   } catch (e) {

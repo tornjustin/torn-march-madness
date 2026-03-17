@@ -296,6 +296,19 @@ function TeamsManager({ data, token, onRefresh }) {
 function BracketSetup({ data, token, onRefresh }) {
   const [initing, setIniting] = useState(false);
   const [msg, setMsg] = useState('');
+  const [hidingSeeds, setHidingSeeds] = useState(!!data.settings.hideSeedings);
+
+  async function toggleHideSeedings() {
+    const next = !hidingSeeds;
+    setHidingSeeds(next);
+    try {
+      await updateSettings({ hideSeedings: next }, token);
+      onRefresh();
+    } catch (e) {
+      setHidingSeeds(!next); // revert on error
+      alert('Error saving: ' + (e.error || e.message));
+    }
+  }
 
   const r1Matchups = data.matchups.filter(m => m.round === 1);
   const hasMatchups = data.matchups.length > 0;
@@ -332,6 +345,11 @@ function BracketSetup({ data, token, onRefresh }) {
           {initing ? 'Initializing…' : hasMatchups ? '↺ Reinitialize Bracket' : '⚙ Initialize Bracket'}
         </button>
       </div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 16px', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-dim)' }}>
+        <input type="checkbox" checked={hidingSeeds} onChange={toggleHideSeedings} style={{ accentColor: 'var(--gold)', width: 16, height: 16, cursor: 'pointer' }} />
+        Hide seed numbers on public bracket
+      </label>
+
       {msg && <div className={msg.startsWith('Error') ? 'error-msg' : 'success-msg'}>{msg}</div>}
 
       {!hasMatchups ? (

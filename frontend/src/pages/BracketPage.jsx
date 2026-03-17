@@ -7,7 +7,7 @@ import { ensureVoterToken } from '../utils/voter';
 const ROUND_NAMES = { 1: 'Round of 16', 2: 'Round of 8', 3: 'Sweet 16', 4: 'Elite 8', 5: 'Final Four', 6: 'Championship' };
 
 // ─── Single matchup cell (used in desktop bracket + Final Four) ────────────────
-function MatchupCell({ matchup, votedMatchups }) {
+function MatchupCell({ matchup, votedMatchups, hideSeedings }) {
   if (!matchup) return <div className="bracket-cell empty" />;
 
   const { team1, team2, status, winnerId, votes, id } = matchup;
@@ -23,7 +23,7 @@ function MatchupCell({ matchup, votedMatchups }) {
     const isLoser = isClosed && winnerId && winnerId !== team?.id;
     return (
       <div className={`bracket-team ${isWinner ? 'winner' : ''} ${isLoser ? 'loser' : ''} ${!team ? 'tbd' : ''}`}>
-        {team?.seed && <span className="bracket-team-seed">{team.seed}</span>}
+        {!hideSeedings && team?.seed && <span className="bracket-team-seed">{team.seed}</span>}
         <div className="bracket-team-img">
           {team?.image
             ? <img src={team.image} alt={team.name} />
@@ -69,7 +69,7 @@ function MatchupCell({ matchup, votedMatchups }) {
 }
 
 // ─── Mobile card for a single matchup — large photo style ────────────────────
-function MobileMatchupCard({ matchup, votedMatchups }) {
+function MobileMatchupCard({ matchup, votedMatchups, hideSeedings }) {
   const { team1, team2, status, winnerId, votes, id } = matchup;
   const hasVoted = votedMatchups?.has(id);
   const total = (votes?.team1 || 0) + (votes?.team2 || 0);
@@ -93,7 +93,7 @@ function MobileMatchupCard({ matchup, votedMatchups }) {
             : <div className="mc-photo-placeholder"><span>{team1?.name?.[0] || '?'}</span></div>}
           <div className="mc-half-overlay mc-overlay-1" />
           <div className="mc-team-label mc-label-1">
-            {team1?.seed && <span className="mc-seed">#{team1.seed}</span>}
+            {!hideSeedings && team1?.seed && <span className="mc-seed">#{team1.seed}</span>}
             <span className="mc-name">{team1?.name || 'TBD'}</span>
             {isWinner1 && <span className="mc-crown">♛</span>}
             {(isActive || isClosed) && total > 0 && (
@@ -118,7 +118,7 @@ function MobileMatchupCard({ matchup, votedMatchups }) {
             : <div className="mc-photo-placeholder"><span>{team2?.name?.[0] || '?'}</span></div>}
           <div className="mc-half-overlay mc-overlay-2" />
           <div className="mc-team-label mc-label-2">
-            {team2?.seed && <span className="mc-seed">#{team2.seed}</span>}
+            {!hideSeedings && team2?.seed && <span className="mc-seed">#{team2.seed}</span>}
             <span className="mc-name">{team2?.name || 'TBD'}</span>
             {isWinner2 && <span className="mc-crown">♛</span>}
             {(isActive || isClosed) && total > 0 && (
@@ -144,7 +144,7 @@ function MobileMatchupCard({ matchup, votedMatchups }) {
 }
 
 // ─── Mobile matchup list — only shows rounds up to the current active round ───
-function MobileMatchupList({ matchups, votedMatchups }) {
+function MobileMatchupList({ matchups, votedMatchups, hideSeedings }) {
   const allRounds = [...new Set(matchups.map(m => m.round))].sort((a, b) => a - b);
 
   // Find the round with active matchups; fall back to round 1 as preview
@@ -161,7 +161,7 @@ function MobileMatchupList({ matchups, votedMatchups }) {
           {matchups
             .filter(m => m.round === round)
             .sort((a, b) => a.position - b.position)
-            .map(m => <MobileMatchupCard key={m.id} matchup={m} votedMatchups={votedMatchups} />)}
+            .map(m => <MobileMatchupCard key={m.id} matchup={m} votedMatchups={votedMatchups} hideSeedings={hideSeedings} />)}
         </div>
       ))}
     </div>
@@ -169,7 +169,7 @@ function MobileMatchupList({ matchups, votedMatchups }) {
 }
 
 // ─── Region bracket (4 rounds, horizontal — desktop only) ─────────────────────
-function RegionBracket({ region, matchups, votedMatchups }) {
+function RegionBracket({ region, matchups, votedMatchups, hideSeedings }) {
   const GAME_H = 110;
   const COL_W = 260;
   const COL_GAP = 28;
@@ -218,8 +218,8 @@ function RegionBracket({ region, matchups, votedMatchups }) {
                 const isActive = m.status !== 'pending';
                 return (
                   <g key={m.id}>
-                    <line x1={x1} y1={y1} x2={xMid} y2={y1} stroke={isActive ? '#4a3a18' : '#2e2535'} strokeWidth="1.5" />
-                    <line x1={xMid} y1={y1} x2={xMid} y2={yMid} stroke={isActive ? '#4a3a18' : '#2e2535'} strokeWidth="1.5" />
+                    <line x1={x1} y1={y1} x2={xMid} y2={y1} stroke={isActive ? 'var(--border-gold)' : 'var(--border)'} strokeWidth="1.5" />
+                    <line x1={xMid} y1={y1} x2={xMid} y2={yMid} stroke={isActive ? 'var(--border-gold)' : 'var(--border)'} strokeWidth="1.5" />
                   </g>
                 );
               });
@@ -233,7 +233,7 @@ function RegionBracket({ region, matchups, votedMatchups }) {
                 const isActive = m.status !== 'pending';
                 return (
                   <g key={`into-${m.id}`}>
-                    <line x1={xMid} y1={y2} x2={x2} y2={y2} stroke={isActive ? '#4a3a18' : '#2e2535'} strokeWidth="1.5" />
+                    <line x1={xMid} y1={y2} x2={x2} y2={y2} stroke={isActive ? 'var(--border-gold)' : 'var(--border)'} strokeWidth="1.5" />
                   </g>
                 );
               });
@@ -252,7 +252,7 @@ function RegionBracket({ region, matchups, votedMatchups }) {
                   height: GAME_H
                 }}
               >
-                <MatchupCell matchup={m} votedMatchups={votedMatchups} />
+                <MatchupCell matchup={m} votedMatchups={votedMatchups} hideSeedings={hideSeedings} />
               </div>
             ))
           ))}
@@ -260,7 +260,7 @@ function RegionBracket({ region, matchups, votedMatchups }) {
       </div>
 
       {/* Mobile list view */}
-      <MobileMatchupList matchups={matchups} regionName={region.name} votedMatchups={votedMatchups} />
+      <MobileMatchupList matchups={matchups} regionName={region.name} votedMatchups={votedMatchups} hideSeedings={hideSeedings} />
     </div>
   );
 }
@@ -278,21 +278,21 @@ function FinalFour({ matchups, votedMatchups }) {
       <div className="final-four-grid">
         <div className="ff-col">
           <div className="ff-round-label">Final Four</div>
-          {ff1 ? <MatchupCell matchup={ff1} votedMatchups={votedMatchups} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
+          {ff1 ? <MatchupCell matchup={ff1} votedMatchups={votedMatchups} hideSeedings={hideSeedings} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
           <div style={{ height: 32 }} />
-          {ff2 ? <MatchupCell matchup={ff2} votedMatchups={votedMatchups} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
+          {ff2 ? <MatchupCell matchup={ff2} votedMatchups={votedMatchups} hideSeedings={hideSeedings} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
         </div>
         <div className="ff-center-arrow">&rarr;</div>
         <div className="ff-col">
           <div className="ff-round-label championship-label">Championship</div>
           <div style={{ marginTop: 40 }}>
-            {champ ? <MatchupCell matchup={champ} votedMatchups={votedMatchups} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
+            {champ ? <MatchupCell matchup={champ} votedMatchups={votedMatchups} hideSeedings={hideSeedings} /> : <div className="bracket-cell empty"><span>TBD</span></div>}
           </div>
         </div>
       </div>
 
       {/* Mobile Final Four list — same style as region rounds */}
-      <MobileMatchupList matchups={finalsMatchups} votedMatchups={votedMatchups} />
+      <MobileMatchupList matchups={finalsMatchups} votedMatchups={votedMatchups} hideSeedings={hideSeedings} />
     </div>
   );
 }
@@ -365,6 +365,7 @@ export default function BracketPage() {
   if (error) return <div className="page"><div className="error-msg">{error}</div></div>;
 
   const { settings, regions, matchups } = data;
+  const hideSeedings = !!settings.hideSeedings;
   const hasMatchups = matchups.length > 0;
 
   const finalsHasActive = matchups.some(m => !m.regionId && m.status === 'active' && m.team1 && m.team2);
@@ -408,6 +409,7 @@ export default function BracketPage() {
                   region={region}
                   matchups={matchups.filter(m => m.regionId === region.id)}
                   votedMatchups={votedMatchups}
+                  hideSeedings={hideSeedings}
                 />
               ))}
             </div>
