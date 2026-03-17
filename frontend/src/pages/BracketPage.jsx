@@ -383,7 +383,7 @@ export default function BracketPage() {
 
   return (
     <div className="page">
-      <div style={{ textAlign: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
         <img src="/Middle-earth-March-Madness-2026.png" alt={settings.name} style={{ height: 180, width: 'auto', maxWidth: '90%' }} />
       </div>
       <div className="page-subtitle">2026 Tournament: Collectibles Clash</div>
@@ -396,6 +396,8 @@ export default function BracketPage() {
         </div>
       ) : (
         <>
+          <div className="choose-region-label">Choose a Region:</div>
+
           {/* Desktop tabs — hidden on mobile */}
           <div className="tabs">
             {tabs.map(t => (
@@ -908,6 +910,17 @@ export default function BracketPage() {
           font-size: 0.7rem;
         }
         .vs-chip { color: var(--text-muted); font-size: 0.6rem; }
+
+        /* ─ Choose a region label ───────────────────────────── */
+        .choose-region-label {
+          font-family: var(--font-heading);
+          font-size: 0.72rem;
+          text-transform: uppercase;
+          letter-spacing: 0.18em;
+          color: var(--text-muted);
+          text-align: center;
+          margin-bottom: 10px;
+        }
 
         /* ─ Tabs (desktop) / Mobile region nav ─────────────── */
         .mobile-region-nav { display: none; }
