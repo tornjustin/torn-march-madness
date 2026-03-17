@@ -36,7 +36,7 @@ function Nav() {
     <nav className="site-nav">
       <div className="nav-inner">
         <Link to="/" className="nav-brand">
-          <img src="/Middle-earth-March-Madness-2026.png" alt="Middle-earth March Madness 2026" className="nav-logo-img" />
+          <span className="nav-brand-text"><em>TheOneRing.net</em> presents <strong>Middle-earth March Madness</strong></span>
         </Link>
         <div className="nav-links">
           <Link to="/" className={loc.pathname === '/' ? 'active' : ''}>Bracket</Link>
@@ -49,13 +49,24 @@ function Nav() {
           align-items: center;
           text-decoration: none;
         }
-        .nav-logo-img {
-          height: 80px;
-          width: auto;
+        .nav-brand-text {
+          font-family: var(--font-heading);
+          font-size: 0.85rem;
+          color: var(--text-dim);
+          letter-spacing: 0.02em;
+          line-height: 1.3;
+        }
+        .nav-brand-text em {
+          font-style: italic;
+          color: var(--gold);
+        }
+        .nav-brand-text strong {
+          color: var(--text);
+          font-weight: 700;
         }
         @media (max-width: 640px) {
-          .nav-inner { height: 70px; }
-          .nav-logo-img { height: 60px; }
+          .nav-inner { height: 56px; }
+          .nav-brand-text { font-size: 0.72rem; }
           .nav-links { gap: 16px; }
           .nav-links a { font-size: 0.75rem; letter-spacing: 0.06em; }
           .nav-stream-link { display: none; }

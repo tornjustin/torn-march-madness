@@ -110,7 +110,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--gold-dim); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 90px;
+  height: 56px;
 }
 .nav-logo {
   display: flex;

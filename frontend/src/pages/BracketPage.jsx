@@ -376,8 +376,10 @@ export default function BracketPage() {
 
   return (
     <div className="page">
-      <div className="page-title">{settings.name}</div>
-      <div className="page-subtitle">{settings.year} Tournament Bracket</div>
+      <div style={{ textAlign: 'center', marginBottom: 8 }}>
+        <img src="/Middle-earth-March-Madness-2026.png" alt={settings.name} style={{ height: 180, width: 'auto', maxWidth: '90%' }} />
+      </div>
+      <div className="page-subtitle">2026 Tournament: Collectibles Clash</div>
 
       {!hasMatchups ? (
         <div className="bracket-empty-state">
