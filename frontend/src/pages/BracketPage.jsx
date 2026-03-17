@@ -144,7 +144,7 @@ function MobileMatchupCard({ matchup, votedMatchups, hideSeedings }) {
 }
 
 // ─── Mobile matchup list — only shows rounds up to the current active round ───
-function MobileMatchupList({ matchups, votedMatchups, hideSeedings }) {
+function MobileMatchupList({ matchups, votedMatchups, hideSeedings, onNext, nextLabel }) {
   const allRounds = [...new Set(matchups.map(m => m.round))].sort((a, b) => a - b);
 
   // Find the round with active matchups; fall back to round 1 as preview
@@ -164,12 +164,17 @@ function MobileMatchupList({ matchups, votedMatchups, hideSeedings }) {
             .map(m => <MobileMatchupCard key={m.id} matchup={m} votedMatchups={votedMatchups} hideSeedings={hideSeedings} />)}
         </div>
       ))}
+      {onNext && (
+        <button className="mrn-next-btn" onClick={onNext}>
+          Next: {nextLabel} →
+        </button>
+      )}
     </div>
   );
 }
 
 // ─── Region bracket (4 rounds, horizontal — desktop only) ─────────────────────
-function RegionBracket({ region, matchups, votedMatchups, hideSeedings }) {
+function RegionBracket({ region, matchups, votedMatchups, hideSeedings, onNext, nextLabel }) {
   const GAME_H = 110;
   const COL_W = 260;
   const COL_GAP = 28;
@@ -260,13 +265,13 @@ function RegionBracket({ region, matchups, votedMatchups, hideSeedings }) {
       </div>
 
       {/* Mobile list view */}
-      <MobileMatchupList matchups={matchups} regionName={region.name} votedMatchups={votedMatchups} hideSeedings={hideSeedings} />
+      <MobileMatchupList matchups={matchups} regionName={region.name} votedMatchups={votedMatchups} hideSeedings={hideSeedings} onNext={onNext} nextLabel={nextLabel} />
     </div>
   );
 }
 
 // ─── Final Four + Championship ────────────────────────────────────────────────
-function FinalFour({ matchups, votedMatchups }) {
+function FinalFour({ matchups, votedMatchups, hideSeedings }) {
   const ff1 = matchups.find(m => m.id === 'ff_r5_p1');
   const ff2 = matchups.find(m => m.id === 'ff_r5_p2');
   const champ = matchups.find(m => m.id === 'ff_r6_p1');
@@ -373,6 +378,8 @@ export default function BracketPage() {
     ...regions.map(r => ({ id: r.id, label: r.name })),
     { id: 'finals', label: 'FINAL 4' }
   ];
+  const currentTabIndex = tabs.findIndex(t => t.id === tab);
+  const nextTab = currentTabIndex < tabs.length - 1 ? tabs[currentTabIndex + 1] : null;
 
   return (
     <div className="page">
@@ -389,6 +396,7 @@ export default function BracketPage() {
         </div>
       ) : (
         <>
+          {/* Desktop tabs — hidden on mobile */}
           <div className="tabs">
             {tabs.map(t => (
               <button
@@ -401,8 +409,27 @@ export default function BracketPage() {
             ))}
           </div>
 
+          {/* Mobile region nav — compact chip dots + active region name, hidden on desktop */}
+          <div className="mobile-region-nav">
+            <div className="mrn-chips">
+              {tabs.map((t, i) => (
+                <button
+                  key={t.id}
+                  className={`mrn-chip ${tab === t.id ? 'mrn-chip-active' : ''} ${t.id === 'finals' && finalsHasActive ? 'mrn-chip-finals' : ''}`}
+                  onClick={() => setTab(t.id)}
+                  aria-label={t.label}
+                >
+                  {t.id === 'finals' ? '★' : i + 1}
+                </button>
+              ))}
+            </div>
+            <div className="mrn-region-name">
+              {tabs.find(t => t.id === tab)?.label}
+            </div>
+          </div>
+
           {tab === 'finals' ? (
-            <FinalFour matchups={matchups} votedMatchups={votedMatchups} />
+            <FinalFour matchups={matchups} votedMatchups={votedMatchups} hideSeedings={hideSeedings} />
           ) : (
             <div className="region-panel">
               {regions.filter(r => r.id === tab).map(region => (
@@ -412,6 +439,8 @@ export default function BracketPage() {
                   matchups={matchups.filter(m => m.regionId === region.id)}
                   votedMatchups={votedMatchups}
                   hideSeedings={hideSeedings}
+                  onNext={nextTab ? () => setTab(nextTab.id) : undefined}
+                  nextLabel={nextTab?.label}
                 />
               ))}
             </div>
@@ -880,21 +909,41 @@ export default function BracketPage() {
         }
         .vs-chip { color: var(--text-muted); font-size: 0.6rem; }
 
-        /* ─ Tabs ───────────────────────────────────────────── */
+        /* ─ Tabs (desktop) / Mobile region nav ─────────────── */
+        .mobile-region-nav { display: none; }
+        .mrn-chips { display: flex; gap: 12px; align-items: center; padding: 4px; }
+        .mrn-chip {
+          width: 42px; height: 42px; border-radius: 50%;
+          border: 2px solid var(--border-gold);
+          background: var(--bg-card); color: var(--text-dim);
+          font-family: var(--font-heading); font-size: 1rem; font-weight: 600;
+          cursor: pointer; transition: all 0.18s;
+          display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .mrn-chip:hover { border-color: var(--gold); color: var(--gold); }
+        .mrn-chip-active { background: var(--gold); color: var(--bg-deepest); border-color: var(--gold); box-shadow: 0 0 12px rgba(212,175,55,0.35); }
+        .mrn-chip-finals { border-color: var(--gold); color: var(--gold); animation: finalsChipPulse 2s ease-in-out infinite; }
+        @keyframes finalsChipPulse {
+          0%, 100% { box-shadow: 0 0 6px rgba(212,175,55,0.3); }
+          50% { box-shadow: 0 0 18px rgba(212,175,55,0.65); }
+        }
+        .mrn-region-name {
+          margin-top: 10px;
+          font-family: var(--font-title); font-size: 1.05rem;
+          color: var(--gold); text-align: center; letter-spacing: 0.04em;
+          line-height: 1.3; padding: 0 16px;
+        }
+        .mrn-next-btn {
+          margin-top: 20px; width: 100%; padding: 14px 16px;
+          background: var(--bg-card); border: 1px solid var(--border-gold);
+          border-radius: var(--radius); color: var(--gold);
+          font-family: var(--font-heading); font-size: 0.85rem; letter-spacing: 0.08em;
+          cursor: pointer; transition: all 0.18s; text-align: center;
+        }
+        .mrn-next-btn:hover { background: rgba(212,175,55,0.12); border-color: var(--gold); }
         @media (max-width: 640px) {
-          .tabs {
-            overflow-x: auto;
-            flex-wrap: nowrap;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-          }
-          .tabs::-webkit-scrollbar { display: none; }
-          .tab-btn {
-            white-space: nowrap;
-            flex-shrink: 0;
-            padding: 10px 14px;
-            font-size: 0.72rem;
-          }
+          .tabs { display: none; }
+          .mobile-region-nav { display: flex; flex-direction: column; align-items: center; margin-bottom: 16px; padding-top: 4px; }
         }
 
         /* ─ Active matchups bar mobile ─────────────────────── */
