@@ -1,13 +1,16 @@
-name: Deploy to AWS
+name: Deploy Backend to AWS
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'backend/**'
+      - 'serverless.yml'
   workflow_dispatch:  # allow manual trigger from GitHub UI
 
 jobs:
   deploy:
-    name: Deploy Backend + Frontend
+    name: Deploy Backend
     runs-on: ubuntu-latest
 
     env:
@@ -45,61 +48,13 @@ jobs:
           JWT_SECRET:     ${{ secrets.JWT_SECRET }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
 
-      # Capture the API URL and frontend bucket from CloudFormation outputs
-      - name: Get stack outputs
-        id: stack
+      - name: Print API URL
         run: |
           API_URL=$(aws cloudformation describe-stacks \
             --stack-name torn-march-madness-prod \
             --query "Stacks[0].Outputs[?OutputKey=='ApiEndpoint'].OutputValue" \
             --output text)
-          FRONTEND_URL=$(aws cloudformation describe-stacks \
-            --stack-name torn-march-madness-prod \
-            --query "Stacks[0].Outputs[?OutputKey=='FrontendUrl'].OutputValue" \
-            --output text)
-          BUCKET_NAME=$(aws cloudformation describe-stacks \
-            --stack-name torn-march-madness-prod \
-            --query "Stacks[0].Outputs[?OutputKey=='FrontendBucketName'].OutputValue" \
-            --output text)
-          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
-          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
-          echo "bucket_name=$BUCKET_NAME" >> "$GITHUB_OUTPUT"
+          echo "API: $API_URL/api/tournament"
 
-      # ── Frontend: Build and sync to S3 ───────────────────────────────────────
-      - name: Get frontend bucket name
-        id: bucket
-        run: |
-          BUCKET=$(aws cloudformation describe-stacks \
-            --stack-name torn-march-madness-prod \
-            --query 'Stacks[0].Outputs[?OutputKey==`FrontendUrl`].OutputValue' \
-            --output text \
-            --region us-east-1 \
-            | sed 's|http://||' | sed 's|\.s3-website.*||')
-          echo "name=${BUCKET}" >> "$GITHUB_OUTPUT"
-
-      - name: Install frontend dependencies
-        run: npm ci
-        working-directory: frontend
-
-      - name: Build frontend
-        run: npm run build
-        working-directory: frontend
-        env:
-          VITE_API_URL: ${{ steps.stack.outputs.api_url }}
-
-      - name: Sync HTML/CSS/JS with no-cache headers
-        run: |
-          aws s3 sync frontend/dist/ "s3://${{ steps.stack.outputs.bucket_name }}/" \
-            --delete \
-            --cache-control "no-cache, no-store, must-revalidate" \
-            --exclude "assets/*"
-
-      - name: Sync hashed assets with long-lived cache
-        run: |
-          aws s3 sync frontend/dist/assets/ "s3://${{ steps.stack.outputs.bucket_name }}/assets/" \
-            --cache-control "public, max-age=31536000, immutable"
-
-      - name: Print deployment URLs
-        run: |
-          echo "Frontend: ${{ steps.stack.outputs.frontend_url }}"
-          echo "API:      ${{ steps.stack.outputs.api_url }}/api/tournament"
+# NOTE: Frontend is now deployed via Vercel (auto-deploys on push to main).
+# See VERCEL-MIGRATION.md for details and rollback instructions.

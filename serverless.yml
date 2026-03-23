@@ -19,7 +19,7 @@ provider:
     IMAGES_BUCKET:    ${self:custom.imagesBucket}
     JWT_SECRET:       ${env:JWT_SECRET}
     ADMIN_PASSWORD:   ${env:ADMIN_PASSWORD}
-    CORS_ORIGINS:     http://${self:custom.frontendBucket}.s3-website-us-east-1.amazonaws.com
+    CORS_ORIGINS:     https://memm.oner.ing,https://memm-theonering.vercel.app
 
   iam:
     role:
