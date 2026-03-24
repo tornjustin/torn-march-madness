@@ -50,6 +50,10 @@ provider:
             - s3:DeleteObject
             - s3:GetObject
           Resource: !Sub 'arn:aws:s3:::${self:custom.imagesBucket}/*'
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+          Resource: !Sub 'arn:aws:s3:::${self:custom.imagesBucket}'
 
 custom:
   tournamentTable: torn-march-madness-tournament
