@@ -329,7 +329,7 @@ app.get('/api/bracket/image', async (req, res) => {
     });
     obj.Body.pipe(res);
   } catch (e) {
-    if (e.name === 'NoSuchKey') {
+    if (e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404) {
       return res.status(404).json({ error: 'Bracket image not yet uploaded. Use the admin panel to upload one.' });
     }
     console.error('GET /api/bracket/image error:', e);
