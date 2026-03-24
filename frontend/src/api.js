@@ -87,6 +87,18 @@ export const uploadTeamImage = async (teamId, file, token) => {
   return res.json();
 };
 
+export const uploadBracketImage = async (file, token) => {
+  const fd = new FormData();
+  fd.append('image', file);
+  const res = await fetch(`${BASE}/admin/bracket/generate`, {
+    method: 'POST',
+    headers: { 'x-admin-token': token },
+    body: fd,
+  });
+  if (!res.ok) throw await res.json().catch(() => ({ error: res.statusText }));
+  return res.json();
+};
+
 export const initializeBracket = token => adminReq('/admin/initialize-bracket', { method: 'POST' }, token);
 export const seedMatchup       = (id, body, token) => adminReq(`/admin/matchups/${id}/seed`, { method: 'PUT', body }, token);
 export const setMatchupStatus  = (id, status, token) => adminReq(`/admin/matchups/${id}/status`, { method: 'PUT', body: { status } }, token);

@@ -6,7 +6,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const { v4: uuidv4 } = require('uuid');
-const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getData, saveData, getVote, saveVote, deleteVotesForMatchup, getSeedingData, saveSeedingData } = require('./db');
 // bracketRenderer.js (SVG) kept for backwards compat but PNG is primary
 // const { renderBracketSVG } = require('./bracketRenderer');
@@ -311,28 +311,27 @@ app.get('/api/dashboard', async (req, res) => {
 });
 
 // ─── Bracket Image (PNG) ─────────────────────────────────────────────────────
-const { execSync } = require('child_process');
-const fs = require('fs');
+const BRACKET_S3_KEY = 'bracket.png';
 
-const BRACKET_PNG = path.join(__dirname, 'data', 'bracket.png');
-const BRACKET_SCRIPT = path.join(__dirname, 'generate_bracket.py');
-
-// Serve the pre-generated bracket PNG
+// Serve the bracket PNG from S3
 app.get('/api/bracket/image', async (req, res) => {
   try {
-    if (!fs.existsSync(BRACKET_PNG)) {
-      return res.status(404).json({ error: 'Bracket image not yet generated. Use POST /api/admin/bracket/generate to create it.' });
-    }
-    const stat = fs.statSync(BRACKET_PNG);
+    const obj = await s3.send(new GetObjectCommand({
+      Bucket: IMAGES_BUCKET,
+      Key: BRACKET_S3_KEY,
+    }));
     res.set({
       'Content-Type': 'image/png',
       'Cache-Control': 'public, max-age=300',
       'Content-Disposition': 'inline; filename="memm-bracket.png"',
-      'Content-Length': stat.size,
-      'Last-Modified': stat.mtime.toUTCString(),
+      ...(obj.ContentLength && { 'Content-Length': obj.ContentLength }),
+      ...(obj.LastModified && { 'Last-Modified': obj.LastModified.toUTCString() }),
     });
-    fs.createReadStream(BRACKET_PNG).pipe(res);
+    obj.Body.pipe(res);
   } catch (e) {
+    if (e.name === 'NoSuchKey') {
+      return res.status(404).json({ error: 'Bracket image not yet uploaded. Use the admin panel to upload one.' });
+    }
     console.error('GET /api/bracket/image error:', e);
     res.status(500).json({ error: 'Failed to serve bracket image' });
   }
@@ -342,28 +341,27 @@ app.get('/api/bracket/image', async (req, res) => {
 // ADMIN API
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Generate/regenerate bracket PNG (admin only)
-app.post('/api/admin/bracket/generate', adminAuth, async (req, res) => {
+// Upload bracket PNG (admin only)
+app.post('/api/admin/bracket/generate', adminAuth, upload.single('image'), async (req, res) => {
   try {
-    console.log('[bracket] Regenerating bracket image...');
-    const output = execSync(`python3 "${BRACKET_SCRIPT}"`, {
-      timeout: 60000,
-      cwd: __dirname,
-      encoding: 'utf-8',
-    });
-    console.log('[bracket]', output.trim());
-    if (!fs.existsSync(BRACKET_PNG)) {
-      return res.status(500).json({ error: 'Generation completed but file not found' });
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
     }
-    const stat = fs.statSync(BRACKET_PNG);
+    console.log('[bracket] Uploading bracket image to S3…', req.file.size, 'bytes');
+    await s3.send(new PutObjectCommand({
+      Bucket: IMAGES_BUCKET,
+      Key: BRACKET_S3_KEY,
+      Body: req.file.buffer,
+      ContentType: 'image/png',
+    }));
     res.json({
       success: true,
-      size: stat.size,
-      generatedAt: new Date().toISOString(),
+      size: req.file.size,
+      uploadedAt: new Date().toISOString(),
     });
   } catch (e) {
-    console.error('[bracket] Generation error:', e.message);
-    res.status(500).json({ error: 'Failed to generate bracket: ' + e.message });
+    console.error('[bracket] Upload error:', e.message);
+    res.status(500).json({ error: 'Failed to upload bracket: ' + e.message });
   }
 });
 
@@ -408,10 +406,10 @@ app.put('/api/admin/regions/:id', adminAuth, async (req, res) => {
 // Teams CRUD
 app.post('/api/admin/teams', adminAuth, async (req, res) => {
   try {
-    const { name, regionId, seed, description } = req.body;
+    const { name, regionId, seed, description, link } = req.body;
     if (!name || !regionId) return res.status(400).json({ error: 'name and regionId required' });
     const data = await getData();
-    const team = { id: uuidv4(), name, regionId, seed: seed || null, description: description || '', image: null, createdAt: new Date().toISOString() };
+    const team = { id: uuidv4(), name, regionId, seed: seed || null, description: description || '', image: null, link: link || '', createdAt: new Date().toISOString() };
     data.teams.push(team);
     await saveData(data);
     res.json(team);
@@ -425,11 +423,12 @@ app.put('/api/admin/teams/:id', adminAuth, async (req, res) => {
     const data = await getData();
     const team = data.teams.find(t => t.id === req.params.id);
     if (!team) return res.status(404).json({ error: 'Not found' });
-    const { name, regionId, seed, description } = req.body;
+    const { name, regionId, seed, description, link } = req.body;
     if (name !== undefined) team.name = name;
     if (regionId !== undefined) team.regionId = regionId;
     if (seed !== undefined) team.seed = seed;
     if (description !== undefined) team.description = description;
+    if (link !== undefined) team.link = link;
     await saveData(data);
     res.json(team);
   } catch (e) {

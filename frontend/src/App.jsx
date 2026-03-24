@@ -40,7 +40,6 @@ function Nav() {
         </Link>
         <div className="nav-links">
           <Link to="/" className={loc.pathname === '/' ? 'active' : ''}>Bracket</Link>
-          <Link to="/admin" className={loc.pathname.startsWith('/admin') ? 'active' : ''}>Admin</Link>
         </div>
       </div>
       <style>{`

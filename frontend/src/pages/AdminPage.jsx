@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   getTournament, createTeam, updateTeam, deleteTeam, uploadTeamImage,
   initializeBracket, seedMatchup, setMatchupStatus, setWinner, resetVotes,
-  updateRegion, updateSettings, updateDashboard, adminLogin
+  updateRegion, updateSettings, updateDashboard, adminLogin, uploadBracketImage
 } from '../api';
 import SeedingConfigTab from '../components/admin/SeedingConfigTab';
 import SeedingContendersTab from '../components/admin/SeedingContendersTab';
@@ -92,7 +92,7 @@ function AdminLogin({ onLogin }) {
 
 // ─── Teams Manager ─────────────────────────────────────────────────────────────
 function TeamsManager({ data, token, onRefresh }) {
-  const emptyForm = { name: '', regionId: data.regions[0]?.id || '', seed: '', description: '' };
+  const emptyForm = { name: '', regionId: data.regions[0]?.id || '', seed: '', description: '', link: '' };
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [editExistingImage, setEditExistingImage] = useState(null); // current image when editing
@@ -131,7 +131,7 @@ function TeamsManager({ data, token, onRefresh }) {
     if (!form.name || !form.regionId) return;
     setSaving(true);
     try {
-      const body = { name: form.name, regionId: form.regionId, seed: form.seed ? Number(form.seed) : null, description: form.description };
+      const body = { name: form.name, regionId: form.regionId, seed: form.seed ? Number(form.seed) : null, description: form.description, link: form.link };
       let teamId = editId;
       if (editId) {
         await updateTeam(editId, body, token);
@@ -169,7 +169,7 @@ function TeamsManager({ data, token, onRefresh }) {
     setPendingFile(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
-    setForm({ name: team.name, regionId: team.regionId, seed: team.seed || '', description: team.description || '' });
+    setForm({ name: team.name, regionId: team.regionId, seed: team.seed || '', description: team.description || '', link: team.link || '' });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -231,6 +231,10 @@ function TeamsManager({ data, token, onRefresh }) {
                   <label className="form-label">Description</label>
                   <input className="form-input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Short tagline..." />
                 </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Buy / Learn More URL</label>
+                <input className="form-input" type="url" value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} placeholder="https://..." />
               </div>
             </div>
           </div>
@@ -773,8 +777,10 @@ function Settings({ data, token, onRefresh }) {
   }
 
   // Bracket image (PNG)
-  const imageApiUrl = `${window.location.origin.replace(':5173', ':3001')}/api/bracket/image`;
+  const imageApiBase = (import.meta.env.VITE_API_URL || '') + '/api';
+  const imageApiUrl = `${imageApiBase}/bracket/image`;
   const imageImgTag = `<img src="${imageApiUrl}" alt="${data.settings.name} ${data.settings.year} Bracket" style="max-width: 100%; height: auto;" />`;
+  const bracketFileRef = useRef(null);
 
   function downloadBracketImage() {
     const link = document.createElement('a');
@@ -792,25 +798,24 @@ function Settings({ data, token, onRefresh }) {
     });
   }
 
-  async function regenerateBracketImage() {
+  async function handleBracketUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
     setGenerating(true);
     setGenMsg('');
     try {
-      const res = await fetch(`${window.location.origin.replace(':5173', ':3001')}/api/admin/bracket/generate`, {
-        method: 'POST',
-        headers: { 'x-admin-token': token },
-      });
-      const json = await res.json();
+      const json = await uploadBracketImage(file, token);
       if (json.success) {
-        setGenMsg(`Generated! (${(json.size / 1024).toFixed(0)} KB)`);
+        setGenMsg(`Uploaded! (${(json.size / 1024).toFixed(0)} KB)`);
         setImageKey(Date.now());
       } else {
         setGenMsg('Error: ' + (json.error || 'Unknown'));
       }
-    } catch (e) {
-      setGenMsg('Error: ' + e.message);
+    } catch (err) {
+      setGenMsg('Error: ' + (err.error || err.message || 'Upload failed'));
     } finally {
       setGenerating(false);
+      bracketFileRef.current.value = '';
       setTimeout(() => setGenMsg(''), 5000);
     }
   }
@@ -881,7 +886,7 @@ function Settings({ data, token, onRefresh }) {
       <div className="card card-gold" style={{ maxWidth: 560, marginTop: 28 }}>
         <h3 className="card-section-title">Bracket Image (PNG)</h3>
         <p style={{ fontSize: '0.82rem', color: 'var(--text-dim)', marginBottom: 14, lineHeight: 1.6 }}>
-          High-resolution parchment bracket image for embedding in blog posts and sharing on social media. Click <strong style={{ color: 'var(--text)' }}>Regenerate</strong> after updating matchup results.
+          High-resolution parchment bracket image for embedding in blog posts and sharing on social media. Upload a new PNG after updating matchup results.
         </p>
 
         {/* Preview */}
@@ -902,8 +907,9 @@ function Settings({ data, token, onRefresh }) {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
-          <button className="btn btn-gold" onClick={regenerateBracketImage} disabled={generating}>
-            {generating ? '⟳ Generating…' : '⟳ Regenerate'}
+          <input type="file" accept="image/png" ref={bracketFileRef} style={{ display: 'none' }} onChange={handleBracketUpload} />
+          <button className="btn btn-gold" onClick={() => bracketFileRef.current.click()} disabled={generating}>
+            {generating ? '⟳ Uploading…' : '⟳ Upload Bracket Image'}
           </button>
           <button className="btn btn-outline" onClick={downloadBracketImage}>
             ⬇ Download PNG
@@ -925,7 +931,7 @@ function Settings({ data, token, onRefresh }) {
         </div>
 
         <div className="dashboard-tip" style={{ marginTop: 14 }}>
-          <strong>Tip:</strong> After closing a round and declaring winners, click "Regenerate" to update the bracket image. The PNG is cached for 5 minutes.
+          <strong>Tip:</strong> After closing a round and declaring winners, upload a new bracket image. The PNG is cached for 5 minutes.
         </div>
       </div>
 
