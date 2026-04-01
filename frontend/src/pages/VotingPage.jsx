@@ -218,6 +218,11 @@ export default function VotingPage() {
         </div>
       )}
 
+      {/* Mobile-only sticky Next Matchup bar */}
+      {showResult && nextMatchupId && (
+        <Link to={`/vote/${nextMatchupId}`} className="vote-next-link-mobile">Next Matchup →</Link>
+      )}
+
       {/* Status messages */}
       {!canVote && !showResult && status === 'active' && !team1 && (
         <div className="vote-status-msg">Teams have not been assigned yet.</div>
@@ -315,7 +320,7 @@ export default function VotingPage() {
         }
         .vote-side.can-vote { cursor: pointer; }
         .vote-side.hovered { flex: 1.08; }
-        .vote-side.my-vote { box-shadow: inset 0 0 0 3px var(--gold); }
+        .vote-side.my-vote { box-shadow: inset 0 0 0 3px #27a55a, inset 0 0 20px rgba(39,165,90,0.15); }
 
         /* Photo */
         .vote-photo-wrap {
@@ -415,16 +420,19 @@ export default function VotingPage() {
 
         .voted-badge {
           display: inline-block;
-          background: rgba(212,175,55,0.2);
-          border: 1px solid var(--gold);
-          color: var(--gold);
+          background: rgba(39,165,90,0.25);
+          border: 2px solid #27a55a;
+          color: #27a55a;
           font-family: var(--font-heading);
-          font-size: 0.72rem;
+          font-size: 0.85rem;
+          font-weight: 700;
           letter-spacing: 0.1em;
           text-transform: uppercase;
-          padding: 3px 12px;
+          padding: 5px 16px;
           border-radius: 20px;
           margin-bottom: 10px;
+          text-shadow: 0 0 12px rgba(39,165,90,0.6);
+          box-shadow: 0 0 16px rgba(39,165,90,0.3);
         }
 
         .vote-result-block {
@@ -589,9 +597,36 @@ export default function VotingPage() {
           letter-spacing: 0.05em;
         }
 
+        .vote-next-link-mobile {
+          display: none;
+        }
+
         @media (max-width: 640px) {
           .vote-arena { flex-direction: column; min-height: auto; }
-          .vote-side { min-height: 45vh; }
+          .voting-page { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+          .vote-side { min-height: 38vh; max-height: calc(50vh - 76px); }
+          .vote-next-link { display: none; }
+          .vote-next-link-mobile {
+            display: block;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            background: linear-gradient(135deg, #1e8b4a, #27a55a);
+            color: #fff;
+            text-align: center;
+            padding: 16px 24px;
+            padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            font-family: var(--font-heading);
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            text-decoration: none;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+          }
+          .vote-next-link-mobile:hover { text-decoration: none; color: #fff; }
           .vs-divider { flex-direction: row; position: relative; left: 0; transform: none; top: auto; bottom: auto; width: 100%; height: 48px; }
           .vs-line.top, .vs-line.bottom { flex: 1; height: 1px; width: auto; background: linear-gradient(to right, transparent, rgba(212,175,55,0.4), transparent); }
           .vote-side.team2 .vote-content { text-align: left; }
